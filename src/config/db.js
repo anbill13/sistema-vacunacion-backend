@@ -15,14 +15,14 @@ const logger = winston.createLogger({
 });
 
 const dbConfig = {
-  server: process.env.DB_SERVER, // ejemplo: retowedf.database.windows.net
+  server: process.env.DB_SERVER,
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   port: 1433,
   options: {
-    encrypt: true, // Azure requiere encriptación
-    trustServerCertificate: false, // recomendado por seguridad
+    encrypt: true,
+    trustServerCertificate: false,
   },
 };
 
