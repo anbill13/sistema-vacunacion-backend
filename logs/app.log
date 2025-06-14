@@ -257,3 +257,17 @@
 {"level":"info","message":"Server running on port 3000","timestamp":"2025-06-14T00:42:15.187Z"}
 {"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-14T00:42:15.771Z"}
 {"ip":"::1","level":"info","message":"GET /api/users/EBCE63AB-731F-4D13-A9CD-E41B87D9B39B","params":{},"query":{},"timestamp":"2025-06-14T00:44:12.314Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-14T02:23:52.687Z"}
+{"ip":"::1","level":"info","message":"GET /test-swagger","params":{},"query":{},"timestamp":"2025-06-14T02:23:52.826Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-14T02:23:53.276Z"}
+{"ip":"::1","level":"info","message":"GET /favicon.ico","params":{},"query":{},"timestamp":"2025-06-14T02:23:55.284Z"}
+{"ip":"::1","level":"info","message":"GET /","params":{},"query":{},"timestamp":"2025-06-14T02:23:59.222Z"}
+{"ip":"::1","level":"info","message":"GET /api/reports","params":{},"query":{},"timestamp":"2025-06-14T02:24:03.668Z"}
+{"level":"error","message":"Authentication required - GET /api/reports","params":{},"query":{},"stack":"Error: Authentication required\n    at authenticate (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\middleware\\auth.js:6:19)\n    at Layer.handleRequest (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\lib\\layer.js:152:17)\n    at trimPrefix (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:342:13)\n    at C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:297:9\n    at processParams (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:582:12)\n    at next (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:291:5)\n    at C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\index.js:45:3\n    at Layer.handleRequest (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\lib\\layer.js:152:17)\n    at trimPrefix (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:342:13)\n    at C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:297:9","timestamp":"2025-06-14T02:24:03.669Z"}
+{"ip":"::1","level":"info","message":"GET /api","params":{},"query":{},"timestamp":"2025-06-14T02:24:07.470Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-14T02:24:12.951Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-14T02:24:13.039Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-14T02:24:13.053Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-14T02:24:13.054Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-14T02:24:13.065Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-14T02:24:14.581Z"}
