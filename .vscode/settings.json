@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/fe47a657-dfc7-4668-b884-e29ebbfd8d9e/resourceGroups/reto_web/providers/Microsoft.Web/sites/SistemaVacunacionBackend",
+    "appService.deploySubpath": "."
+}
