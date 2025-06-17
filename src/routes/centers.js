@@ -116,6 +116,74 @@ router.post(
   }
 );
 
+
+/**
+ * @swagger
+ * tags:
+ *   name: Centers
+ *   description: Gestión de centros de vacunación
+ */
+
+/**
+ * @swagger
+ * /api/centers:
+ *   get:
+ *     summary: Obtiene todos los centros de vacunación
+ *     tags: [Centers]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de centros de vacunación
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_centro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440001"
+ *                   nombre_centro:
+ *                     type: string
+ *                     example: "Centro de Salud Santo Domingo"
+ *                   nombre_corto:
+ *                     type: string
+ *                     example: "CSSD"
+ *                   direccion:
+ *                     type: string
+ *                     example: "Calle 1, Santo Domingo"
+ *                   latitud:
+ *                     type: number
+ *                     format: float
+ *                     example: 18.4861
+ *                   longitud:
+ *                     type: number
+ *                     format: float
+ *                     example: -69.9312
+ *                   telefono:
+ *                     type: string
+ *                     example: "8098765432"
+ *                   director:
+ *                     type: string
+ *                     example: "Dr. José Gómez"
+ *                   sitio_web:
+ *                     type: string
+ *                     format: url
+ *                     example: "http://cssd.gov.do"
+ */
+router.get('/', async (req, res, next) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute('sp_ObtenerCentrosVacunacion');
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    next(error);
+  }
+});
+
 /**
  * @swagger
  * /api/centers/{id}:
