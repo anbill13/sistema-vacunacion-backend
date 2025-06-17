@@ -224,5 +224,60 @@ router.delete(
     }
   }
 );
+/**
+ * @swagger
+ * /api/supply-usage:
+ *   get:
+ *     summary: Obtiene todos los registros de uso de suministros
+ *     tags: [Supply Usage]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de usos de suministros
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_uso:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440011"
+ *                   id_suministro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440010"
+ *                   cantidad_usada:
+ *                     type: integer
+ *                     example: 50
+ *                   fecha_uso:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2025-06-10T20:00:00Z"
+ *                   id_personal:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440009"
+ *                   observaciones:
+ *                     type: string
+ *                     example: "Uso en vacunación rutinaria"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodosUsosSuministros');
 
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 module.exports = router;

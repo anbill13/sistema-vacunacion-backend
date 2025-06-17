@@ -13,6 +13,72 @@ const validate = (req, res, next) => {
   }
   next();
 };
+/**
+ * @swagger
+ * /api/guardians:
+ *   get:
+ *     summary: Obtiene todos los tutores
+ *     tags: [Guardians]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de tutores
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_tutor:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440008"
+ *                   id_niño:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440000"
+ *                   nombre:
+ *                     type: string
+ *                     example: "María López"
+ *                   relacion:
+ *                     type: string
+ *                     enum: [Madre, Padre, Tutor Legal]
+ *                     example: "Madre"
+ *                   nacionalidad:
+ *                     type: string
+ *                     enum: [Dominicano, Extranjero]
+ *                     example: "Dominicano"
+ *                   identificacion:
+ *                     type: string
+ *                     example: "001-7654321-9"
+ *                   telefono:
+ *                     type: string
+ *                     example: "8099876543"
+ *                   email:
+ *                     type: string
+ *                     format: email
+ *                     example: "maria@example.com"
+ *                   direccion:
+ *                     type: string
+ *                     example: "Calle 3, Santo Domingo"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodosTutores');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * @swagger

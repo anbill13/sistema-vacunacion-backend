@@ -16,6 +16,75 @@ const validate = (req, res, next) => {
 
 /**
  * @swagger
+ * /api/adverse-events:
+ *   get:
+ *     summary: Obtiene todos los eventos adversos
+ *     tags: [Adverse Events]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de eventos adversos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_evento:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440003"
+ *                   id_niño:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440000"
+ *                   id_historial:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440001"
+ *                   descripcion_evento:
+ *                     type: string
+ *                     example: "Reacción alérgica leve"
+ *                   fecha_evento:
+ *                     type: string
+ *                     format: date
+ *                     example: "2025-06-10"
+ *                   gravedad:
+ *                     type: string
+ *                     enum: [Leve, Moderado, Grave]
+ *                     example: "Leve"
+ *                   id_personal_reportante:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440002"
+ *                   acciones_tomadas:
+ *                     type: string
+ *                     example: "Administración de antihistamínico"
+ *                   estado:
+ *                     type: string
+ *                     enum: [Reportado, En Investigación, Resuelto]
+ *                     example: "Reportado"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodosEventosAdversos');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
  * tags:
  *   name: Adverse Events
  *   description: Gestión de eventos adversos

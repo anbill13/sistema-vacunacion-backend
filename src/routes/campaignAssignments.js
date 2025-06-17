@@ -16,6 +16,57 @@ const validate = (req, res, next) => {
 
 /**
  * @swagger
+ * /api/campaign-assignments:
+ *   get:
+ *     summary: Obtiene todas las asignaciones de campañas
+ *     tags: [Campaign Assignments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de asignaciones de campañas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_campaña_centro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440007"
+ *                   id_campaña:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440002"
+ *                   id_centro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440001"
+ *                   fecha_asignacion:
+ *                     type: string
+ *                     format: date
+ *                     example: "2025-06-10"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodasCampanasCentros');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
  * tags:
  *   name: Campaign Assignments
  *   description: Asignación de campañas a centros

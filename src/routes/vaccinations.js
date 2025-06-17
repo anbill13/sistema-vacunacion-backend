@@ -13,6 +13,73 @@ const validate = (req, res, next) => {
   }
   next();
 };
+/**
+ * @swagger
+ * /api/vaccinations:
+ *   get:
+ *     summary: Obtiene todos los registros de vacunación
+ *     tags: [Vaccinations]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de vacunaciones
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_historial:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440012"
+ *                   id_niño:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440000"
+ *                   id_vacuna:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440002"
+ *                   id_lote:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440010"
+ *                   id_personal:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440009"
+ *                   fecha_vacunacion:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2025-06-10T20:00:00Z"
+ *                   dosis_aplicada:
+ *                     type: integer
+ *                     example: 1
+ *                   sitio_aplicacion:
+ *                     type: string
+ *                     example: "Brazo izquierdo"
+ *                   observaciones:
+ *                     type: string
+ *                     example: "Vacuna aplicada sin complicaciones"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodasVacunaciones');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * @swagger

@@ -499,5 +499,69 @@ router.delete(
     }
   }
 );
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Obtiene todos los usuarios
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de usuarios
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_usuario:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440000"
+ *                   nombre:
+ *                     type: string
+ *                     example: "Juan Pérez"
+ *                   rol:
+ *                     type: string
+ *                     enum: [doctor, director, responsable, administrador]
+ *                     example: "doctor"
+ *                   id_centro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440001"
+ *                   username:
+ *                     type: string
+ *                     example: "juanperez"
+ *                   email:
+ *                     type: string
+ *                     format: email
+ *                     example: "juan@example.com"
+ *                   telefono:
+ *                     type: string
+ *                     example: "8091234567"
+ *                   estado:
+ *                     type: string
+ *                     enum: [Activo, Inactivo]
+ *                     example: "Activo"
+ */
+router.get(
+  '/',
+  [authenticate, checkRole(['administrador'])], // Solo administradores pueden listar usuarios
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodosUsuarios');
 
+      const users = result.recordset.map(({ password_hash, ...user }) => user);
+      res.json(users);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 module.exports = router;

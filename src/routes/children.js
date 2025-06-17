@@ -13,6 +13,70 @@ const validate = (req, res, next) => {
   }
   next();
 };
+/**
+ * @swagger
+ * /api/children:
+ *   get:
+ *     summary: Obtiene todos los niños
+ *     tags: [Children]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de niños
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_niño:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440000"
+ *                   nombre_completo:
+ *                     type: string
+ *                     example: "Juan Pérez"
+ *                   identificacion:
+ *                     type: string
+ *                     example: "001-1234567-8"
+ *                   nacionalidad:
+ *                     type: string
+ *                     enum: [Dominicano, Extranjero]
+ *                     example: "Dominicano"
+ *                   fecha_nacimiento:
+ *                     type: string
+ *                     format: date
+ *                     example: "2015-05-15"
+ *                   genero:
+ *                     type: string
+ *                     enum: [M, F, O]
+ *                     example: "M"
+ *                   id_centro_salud:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440001"
+ *                   contacto_principal:
+ *                     type: string
+ *                     enum: [Madre, Padre, Tutor]
+ *                     example: "Madre"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodosNinos');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * @swagger

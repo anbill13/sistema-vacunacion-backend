@@ -16,6 +16,71 @@ const validate = (req, res, next) => {
 
 /**
  * @swagger
+ * /api/audits:
+ *   get:
+ *     summary: Obtiene todos los registros de auditoría
+ *     tags: [Audits]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de auditorías
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_auditoria:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440006"
+ *                   tabla_afectada:
+ *                     type: string
+ *                     example: "Usuarios"
+ *                   id_registro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440000"
+ *                   id_usuario:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440002"
+ *                   accion:
+ *                     type: string
+ *                     enum: [INSERT, UPDATE, DELETE, SELECT]
+ *                     example: "INSERT"
+ *                   detalles:
+ *                     type: string
+ *                     example: "Usuario creado"
+ *                   ip_origen:
+ *                     type: string
+ *                     format: ipv4
+ *                     example: "192.168.1.1"
+ *                   fecha_registro:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2025-06-10T20:00:00Z"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodasAuditorias');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
  * tags:
  *   name: Audits
  *   description: Registro de auditorías

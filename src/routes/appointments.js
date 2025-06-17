@@ -16,6 +16,71 @@ const validate = (req, res, next) => {
 
 /**
  * @swagger
+ * /api/appointments:
+ *   get:
+ *     summary: Obtiene todas las citas
+ *     tags: [Appointments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de citas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_cita:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440005"
+ *                   id_niño:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440000"
+ *                   id_centro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440001"
+ *                   id_campaña:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440002"
+ *                   fecha_cita:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2025-06-11T10:00:00Z"
+ *                   estado:
+ *                     type: string
+ *                     enum: ["Pendiente", "Confirmada", "Cancelada", "Completada"]
+ *                     example: "Pendiente"
+ *                   vacuna_programada:
+ *                     type: string
+ *                     example: "Vacuna MMR"
+ *                   observaciones:
+ *                     type: string
+ *                     example: "Cita de seguimiento"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodasCitas');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
  * tags:
  *   - name: Appointments
  *     description: Gestión de citas

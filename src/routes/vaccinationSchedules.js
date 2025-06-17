@@ -13,6 +13,57 @@ const validate = (req, res, next) => {
   }
   next();
 };
+/**
+ * @swagger
+ * /api/vaccination-schedules:
+ *   get:
+ *     summary: Obtiene todos los esquemas de vacunación
+ *     tags: [Vaccination Schedules]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de esquemas de vacunación
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_esquema:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440011"
+ *                   id_vacuna:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440002"
+ *                   orden_dosis:
+ *                     type: integer
+ *                     example: 1
+ *                   edad_recomendada:
+ *                     type: string
+ *                     example: "2 meses"
+ *                   descripcion:
+ *                     type: string
+ *                     example: "Primera dosis de vacuna MMR"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodosEsquemasVacunacion');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * @swagger

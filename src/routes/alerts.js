@@ -16,6 +16,72 @@ const validate = (req, res, next) => {
 
 /**
  * @swagger
+ * /api/alerts:
+ *   get:
+ *     summary: Obtiene todas las alertas
+ *     tags: [Alerts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de alertas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_alerta:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440004"
+ *                   id_niño:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440000"
+ *                   id_evento:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440003"
+ *                   tipo_alerta:
+ *                     type: string
+ *                     enum: [Dosis Pendiente, Evento Adverso, Seguimiento]
+ *                     example: "Dosis Pendiente"
+ *                   fecha_alerta:
+ *                     type: string
+ *                     format: date
+ *                     example: "2025-06-10"
+ *                   mensaje:
+ *                     type: string
+ *                     example: "Recordatorio de dosis pendiente"
+ *                   estado:
+ *                     type: string
+ *                     enum: [Pendiente, Resuelta]
+ *                     example: "Pendiente"
+ *                   id_usuario_asignado:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440002"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodasAlertas');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
  * tags:
  *   name: Alerts
  *   description: Gestión de alertas

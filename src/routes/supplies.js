@@ -384,5 +384,72 @@ router.delete(
     }
   }
 );
+/**
+ * @swagger
+ * /api/supplies:
+ *   get:
+ *     summary: Obtiene todos los suministros
+ *     tags: [Supplies]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de suministros
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_suministro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440010"
+ *                   nombre_suministro:
+ *                     type: string
+ *                     example: "Jeringas desechables"
+ *                   tipo_suministro:
+ *                     type: string
+ *                     example: "Material médico"
+ *                   cantidad_total:
+ *                     type: integer
+ *                     example: 1000
+ *                   cantidad_disponible:
+ *                     type: integer
+ *                     example: 800
+ *                   id_centro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440001"
+ *                   fecha_entrada:
+ *                     type: string
+ *                     format: date
+ *                     example: "2025-06-01"
+ *                   fecha_vencimiento:
+ *                     type: string
+ *                     format: date
+ *                     example: "2026-06-01"
+ *                   proveedor:
+ *                     type: string
+ *                     example: "Proveedor XYZ"
+ *                   condiciones_almacenamiento:
+ *                     type: string
+ *                     example: "2-8°C"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodosSuministros');
 
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 module.exports = router;

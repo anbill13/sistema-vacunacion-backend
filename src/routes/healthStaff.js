@@ -322,5 +322,62 @@ router.delete(
     }
   }
 );
+/**
+ * @swagger
+ * /api/health-staff:
+ *   get:
+ *     summary: Obtiene todo el personal de salud
+ *     tags: [Health Staff]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de personal de salud
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_personal:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440009"
+ *                   nombre:
+ *                     type: string
+ *                     example: "Ana Rodríguez"
+ *                   cedula:
+ *                     type: string
+ *                     example: "001-9876543-2"
+ *                   telefono:
+ *                     type: string
+ *                     example: "8095551234"
+ *                   email:
+ *                     type: string
+ *                     format: email
+ *                     example: "ana@example.com"
+ *                   id_centro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440001"
+ *                   especialidad:
+ *                     type: string
+ *                     example: "Enfermería"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodoPersonalSalud');
 
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 module.exports = router;

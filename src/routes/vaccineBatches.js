@@ -372,5 +372,70 @@ router.delete(
     }
   }
 );
+/**
+ * @swagger
+ * /api/vaccine-batches:
+ *   get:
+ *     summary: Obtiene todos los lotes de vacunas
+ *     tags: [Vaccine Batches]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de lotes de vacunas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_lote:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440010"
+ *                   id_vacuna:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440002"
+ *                   numero_lote:
+ *                     type: string
+ *                     example: "LOT001"
+ *                   cantidad_total:
+ *                     type: integer
+ *                     example: 500
+ *                   cantidad_disponible:
+ *                     type: integer
+ *                     example: 450
+ *                   fecha_fabricacion:
+ *                     type: string
+ *                     format: date
+ *                     example: "2025-01-01"
+ *                   fecha_vencimiento:
+ *                     type: string
+ *                     format: date
+ *                     example: "2026-01-01"
+ *                   id_centro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440001"
+ *                   condiciones_almacenamiento:
+ *                     type: string
+ *                     example: "2-8°C"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodosLotesVacunas');
 
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 module.exports = router;

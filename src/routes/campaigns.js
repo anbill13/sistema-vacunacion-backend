@@ -13,6 +13,66 @@ const validate = (req, res, next) => {
   }
   next();
 };
+/**
+ * @swagger
+ * /api/campaigns:
+ *   get:
+ *     summary: Obtiene todas las campañas
+ *     tags: [Campaigns]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de campañas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_campaña:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440002"
+ *                   nombre_campaña:
+ *                     type: string
+ *                     example: "Campaña de Vacunación 2025"
+ *                   fecha_inicio:
+ *                     type: string
+ *                     format: date
+ *                     example: "2025-06-01"
+ *                   fecha_fin:
+ *                     type: string
+ *                     format: date
+ *                     example: "2025-06-30"
+ *                   objetivo:
+ *                     type: string
+ *                     example: "Vacunar al 90% de la población infantil"
+ *                   id_vacuna:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440003"
+ *                   estado:
+ *                     type: string
+ *                     enum: [Planificada, En Curso, Finalizada]
+ *                     example: "Planificada"
+ */
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodasCampanasVacunacion');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * @swagger
