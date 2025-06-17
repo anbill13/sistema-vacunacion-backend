@@ -3,6 +3,8 @@ const { body, param, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { poolPromise, sql } = require('../config/db');
+const authenticate = require('../middleware/auth');
+const checkRole = require('../middleware/role');
 const router = express.Router();
 
 const validate = (req, res, next) => {
@@ -29,6 +31,8 @@ const validate = (req, res, next) => {
  *   post:
  *     summary: Crea un nuevo usuario
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -41,8 +45,8 @@ const validate = (req, res, next) => {
  *                 example: "Juan Pérez"
  *               rol:
  *                 type: string
- *                 enum: [Médico, Enfermera, Digitador, Supervisor, Administrador]
- *                 example: "Médico"
+ *                 enum: [doctor, director, responsable, administrador]
+ *                 example: "doctor"
  *               id_centro:
  *                 type: string
  *                 format: uuid
@@ -81,13 +85,17 @@ const validate = (req, res, next) => {
  *                   example: "550e8400-e29b-41d4-a716-446655440000"
  *       400:
  *         description: Validación fallida
+ *       403:
+ *         description: No autorizado (solo administradores pueden crear usuarios)
  */
 router.post(
   '/',
   [
+    authenticate,
+    checkRole(['administrador']), // Solo administradores pueden crear usuarios
     body('nombre').isString().trim().notEmpty().withMessage('nombre is required'),
     body('rol')
-      .isIn(['Médico', 'Enfermera', 'Digitador', 'Supervisor', 'Administrador'])
+      .isIn(['doctor', 'director', 'responsable', 'administrador'])
       .withMessage('Invalid rol'),
     body('id_centro').optional().isUUID().withMessage('Invalid UUID for id_centro'),
     body('username').isString().trim().notEmpty().withMessage('username is required'),
@@ -168,7 +176,7 @@ router.post(
  *                       example: "juanperez"
  *                     rol:
  *                       type: string
- *                       example: "Médico"
+ *                       example: "doctor"
  *       401:
  *         description: Credenciales inválidas
  *       403:
@@ -181,7 +189,7 @@ router.post(
     body('password').isString().trim().notEmpty().withMessage('password is required'),
   ],
   validate,
-  async (req, res, next) => {
+  async (req,25 res, next) => {
     const { username, password } = req.body;
 
     try {
@@ -262,7 +270,7 @@ router.post(
  *                   example: "Juan Pérez"
  *                 rol:
  *                   type: string
- *                   example: "Médico"
+ *                   example: "doctor"
  *                 id_centro:
  *                   type: string
  *                   format: uuid
@@ -286,6 +294,7 @@ router.post(
  */
 router.get(
   '/:id',
+  [authenticate, checkRole(['administrador', 'director', 'doctor', 'responsable'])], // Todos los roles pueden consultar usuarios
   [param('id').isUUID().withMessage('Invalid UUID')],
   validate,
   async (req, res, next) => {
@@ -337,8 +346,8 @@ router.get(
  *                 example: "Juan Pérez"
  *               rol:
  *                 type: string
- *                 enum: [Médico, Enfermera, Digitador, Supervisor, Administrador]
- *                 example: "Médico"
+ *                 enum: [doctor, director, responsable, administrador]
+ *                 example: "doctor"
  *               id_centro:
  *                 type: string
  *                 format: uuid
@@ -373,16 +382,20 @@ router.get(
  *                   example: "User updated"
  *       400:
  *         description: Validación fallida
+ *       403:
+ *         description: No autorizado (solo administradores pueden actualizar usuarios)
  *       404:
  *         description: Usuario no encontrado
  */
 router.put(
   '/:id',
   [
+    authenticate,
+    checkRole(['administrador']), // Solo administradores pueden actualizar usuarios
     param('id').isUUID().withMessage('Invalid UUID'),
     body('nombre').isString().trim().notEmpty().withMessage('nombre is required'),
     body('rol')
-      .isIn(['Médico', 'Enfermera', 'Digitador', 'Supervisor', 'Administrador'])
+      .isIn(['doctor', 'director', 'responsable', 'administrador'])
       .withMessage('Invalid rol'),
     body('id_centro').optional().isUUID().withMessage('Invalid UUID for id_centro'),
     body('username').isString().trim().notEmpty().withMessage('username is required'),
@@ -464,9 +477,12 @@ router.put(
  *                   example: "User deleted"
  *       400:
  *         description: Validación fallida
+ *       403:
+ *         description: No autorizado (solo administradores pueden eliminar usuarios)
  */
 router.delete(
   '/:id',
+  [authenticate, checkRole(['administrador'])], // Solo administradores pueden eliminar usuarios
   [param('id').isUUID().withMessage('Invalid UUID')],
   validate,
   async (req, res, next) => {

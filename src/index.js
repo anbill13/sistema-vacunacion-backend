@@ -49,8 +49,6 @@ app.use((req, res, next) => {
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Rutas y middleware aquí
-app.listen(3000, () => console.log('Server running on port 3000'));
-
 app.get('/test-swagger', (req, res) => {
   res.json(swaggerSpecs);
 });
@@ -60,69 +58,84 @@ app.get('/test-swagger', (req, res) => {
 app.use('/api/users', usersRoutes);
 app.use('/api/children', childrenRoutes);
 app.use('/api/guardians', guardiansRoutes);
-app.use('/api/centers',  centersRoutes);
+app.use('/api/centers', centersRoutes);
 
 // Protected routes with authentication and role-based access
 app.use(
   '/api/vaccinations',
-  [authenticate, checkRole(['Médico', 'Enfermera'])],
+  [authenticate, checkRole(['doctor', 'administrador'])], // Doctors y Admins pueden gestionar vacunas
   vaccinationsRoutes
 );
 
 app.use(
   '/api/appointments',
-  [authenticate, checkRole(['Médico', 'Enfermera', 'Digitador'])],
+  [authenticate, checkRole(['doctor', 'administrador'])], // Doctors y Admins pueden gestionar citas
   appointmentsRoutes
 );
 
 app.use(
   '/api/adverse-events',
-  [authenticate, checkRole(['Médico', 'Enfermera'])],
+  [authenticate, checkRole(['doctor', 'administrador'])], // Doctors y Admins pueden reportar eventos adversos
   adverseEventsRoutes
 );
 
 app.use(
   '/api/vaccine-batches',
-  [authenticate, checkRole(['Administrador'])],
+  [authenticate, checkRole(['director', 'administrador'])], // Directors y Admins gestionan lotes de vacunas
   vaccineBatchesRoutes
 );
 
 app.use(
   '/api/health-staff',
-  [authenticate, checkRole(['Administrador'])],
+  [authenticate, checkRole(['director', 'administrador'])], // Directors y Admins gestionan personal de salud
   healthStaffRoutes
 );
 
-app.use('/api/campaigns', [authenticate, checkRole(['Administrador'])], campaignsRoutes);
+app.use(
+  '/api/campaigns',
+  [authenticate, checkRole(['director', 'administrador'])], // Directors y Admins gestionan campañas
+  campaignsRoutes
+);
+
 app.use(
   '/api/campaign-assignments',
-  [authenticate, checkRole(['Administrador'])],
+  [authenticate, checkRole(['director', 'administrador'])], // Directors y Admins asignan campañas
   campaignAssignmentsRoutes
 );
 
-app.use('/api/supplies', [authenticate, checkRole(['Administrador'])], suppliesRoutes);
+app.use(
+  '/api/supplies',
+  [authenticate, checkRole(['director', 'administrador'])], // Directors y Admins gestionan inventario
+  suppliesRoutes
+);
+
 app.use(
   '/api/supply-usage',
-  [authenticate, checkRole(['Médico', 'Enfermera'])],
+  [authenticate, checkRole(['doctor', 'administrador'])], // Doctors y Admins registran uso de insumos
   supplyUsageRoutes
 );
 
 app.use(
   '/api/vaccination-schedules',
-  [authenticate, checkRole(['Administrador'])],
+  [authenticate, checkRole(['director', 'administrador'])], // Directors y Admins gestionan calendarios
   vaccinationSchedulesRoutes
 );
 
-app.use('/api/audits', [authenticate, checkRole(['Supervisor', 'Administrador'])], auditsRoutes);
+app.use(
+  '/api/audits',
+  [authenticate, checkRole(['director', 'administrador'])], // Directors y Admins pueden auditar
+  auditsRoutes
+);
+
 app.use(
   '/api/alerts',
-  [authenticate, checkRole(['Médico', 'Enfermera', 'Supervisor'])],
+  [authenticate, checkRole(['doctor', 'director', 'administrador'])], // Doctors, Directors y Admins ven alertas
   alertsRoutes
 );
 
 app.use(
   '/api/reports',
-  [authenticate, checkRole(['Supervisor', 'Administrador'])],
+  [authenticate, checkRole(['director', 'administrador'])], // Directors y Admins generan reportes
   reportsRoutes
 );
 
