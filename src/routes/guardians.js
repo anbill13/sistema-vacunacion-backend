@@ -13,85 +13,12 @@ const validate = (req, res, next) => {
   }
   next();
 };
-/**
- * @swagger
- * /api/guardians:
- *   get:
- *     summary: Obtiene todos los tutores
- *     tags: [Guardians]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Lista de tutores
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id_tutor:
- *                     type: string
- *                     format: uuid
- *                     example: "550e8400-e29b-41d4-a716-446655440008"
- *                   id_niño:
- *                     type: string
- *                     format: uuid
- *                     example: "550e8400-e29b-41d4-a716-446655440000"
- *                   nombre:
- *                     type: string
- *                     example: "María López"
- *                   relacion:
- *                     type: string
- *                     enum: [Madre, Padre, Tutor Legal]
- *                     example: "Madre"
- *                   nacionalidad:
- *                     type: string
- *                     enum: [Dominicano, Extranjero]
- *                     example: "Dominicano"
- *                   identificacion:
- *                     type: string
- *                     example: "001-7654321-9"
- *                   telefono:
- *                     type: string
- *                     example: "8099876543"
- *                   email:
- *                     type: string
- *                     format: email
- *                     example: "maria@example.com"
- *                   direccion:
- *                     type: string
- *                     example: "Calle 3, Santo Domingo"
- */
-router.get(
-  '/',
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .execute('sp_ObtenerTodosTutores');
-
-      res.json(result.recordset);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * @swagger
- * tags:
- *   name: Guardians
- *   description: Gestión de tutores
- */
 
 /**
  * @swagger
  * /api/guardians:
  *   post:
- *     summary: Crea un nuevo tutor
+ *     summary: Crea un nuevo tutor y usuario asociado
  *     tags: [Guardians]
  *     requestBody:
  *       required: true
@@ -130,7 +57,7 @@ router.get(
  *                 example: "Calle 3, Santo Domingo"
  *     responses:
  *       201:
- *         description: Tutor creado
+ *         description: Tutor y usuario creados
  *         content:
  *           application/json:
  *             schema:
@@ -138,7 +65,7 @@ router.get(
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Guardian created"
+ *                   example: "Guardian and user created"
  *                 id_tutor:
  *                   type: string
  *                   format: uuid
@@ -176,157 +103,42 @@ router.post(
         .input('nacionalidad', sql.NVarChar, nacionalidad)
         .execute('sp_CrearTutor');
 
-      res.status(201).json({ message: 'Guardian created', id_tutor: result.recordset[0].id_tutor });
+      res.status(201).json({ message: 'Guardian and user created', id_tutor: result.recordset[0].id_tutor });
     } catch (error) {
       next(error);
     }
   }
 );
 
-/**
- * @swagger
- * /api/guardians/{id}:
- *   get:
- *     summary: Obtiene un tutor por ID
- *     tags: [Guardians]
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440008"
- *     responses:
- *       200:
- *         description: Tutor encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id_tutor:
- *                   type: string
- *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440008"
- *                 id_niño:
- *                   type: string
- *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440000"
- *                 nombre:
- *                   type: string
- *                   example: "María López"
- *                 relacion:
- *                   type: string
- *                   enum: [Madre, Padre, Tutor Legal]
- *                   example: "Madre"
- *                 nacionalidad:
- *                   type: string
- *                   enum: [Dominicano, Extranjero]
- *                   example: "Dominicano"
- *                 identificacion:
- *                   type: string
- *                   example: "001-7654321-9"
- *                 telefono:
- *                   type: string
- *                   example: "8099876543"
- *                 email:
- *                   type: string
- *                   format: email
- *                   example: "maria@example.com"
- *                 direccion:
- *                   type: string
- *                   example: "Calle 3, Santo Domingo"
- *       404:
- *         description: Tutor no encontrado
- */
-router.get(
-  '/:id',
-  [param('id').isUUID().withMessage('Invalid UUID')],
-  validate,
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('id_tutor', sql.UniqueIdentifier, req.params.id)
-        .execute('sp_ObtenerTutor');
-
-      if (result.recordset.length === 0) {
-        const error = new Error('Guardian not found');
-        error.statusCode = 404;
-        throw error;
-      }
-      res.json(result.recordset[0]);
-    } catch (error) {
-      next(error);
-    }
+// Otros endpoints (GET, PUT, DELETE) permanecen iguales
+router.get('/', async (req, res, next) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().execute('sp_ObtenerTodosTutores');
+    res.json(result.recordset);
+  } catch (error) {
+    next(error);
   }
-);
+});
 
-/**
- * @swagger
- * /api/guardians/{id}:
- *   put:
- *     summary: Actualiza un tutor
- *     tags: [Guardians]
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440008"
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               id_niño:
- *                 type: string
- *                 format: uuid
- *                 example: "550e8400-e29b-41d4-a716-446655440000"
- *               nombre:
- *                 type: string
- *                 example: "María López Actualizada"
- *               relacion:
- *                 type: string
- *                 enum: [Madre, Padre, Tutor Legal]
- *                 example: "Madre"
- *               nacionalidad:
- *                 type: string
- *                 enum: [Dominicano, Extranjero]
- *                 example: "Dominicano"
- *               identificacion:
- *                 type: string
- *                 example: "001-7654321-9"
- *               telefono:
- *                 type: string
- *                 example: "8099876543"
- *               email:
- *                 type: string
- *                 format: email
- *                 example: "maria@example.com"
- *               direccion:
- *                 type: string
- *                 example: "Calle 3, Santo Domingo"
- *     responses:
- *       200:
- *         description: Tutor actualizado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Guardian updated"
- *       400:
- *         description: Validación fallida
- */
+router.get('/:id', [param('id').isUUID().withMessage('Invalid UUID')], validate, async (req, res, next) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_tutor', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_ObtenerTutor');
+    if (result.recordset.length === 0) {
+      const error = new Error('Guardian not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.json(result.recordset[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.put(
   '/:id',
   [
@@ -343,7 +155,6 @@ router.put(
   validate,
   async (req, res, next) => {
     const { id_niño, nombre, identificacion, relacion, telefono, email, direccion, nacionalidad } = req.body;
-
     try {
       const pool = await poolPromise;
       await pool
@@ -358,7 +169,6 @@ router.put(
         .input('direccion', sql.NVarChar, direccion || null)
         .input('nacionalidad', sql.NVarChar, nacionalidad)
         .execute('sp_ActualizarTutor');
-
       res.json({ message: 'Guardian updated' });
     } catch (error) {
       next(error);
@@ -366,51 +176,17 @@ router.put(
   }
 );
 
-/**
- * @swagger
- * /api/guardians/{id}:
- *   delete:
- *     summary: Elimina un tutor
- *     tags: [Guardians]
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440008"
- *     responses:
- *       200:
- *         description: Tutor eliminado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Guardian deleted"
- *       400:
- *         description: Validación fallida
- */
-router.delete(
-  '/:id',
-  [param('id').isUUID().withMessage('Invalid UUID')],
-  validate,
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_tutor', sql.UniqueIdentifier, req.params.id)
-        .execute('sp_EliminarTutor');
-
-      res.json({ message: 'Guardian deleted' });
-    } catch (error) {
-      next(error);
-    }
+router.delete('/:id', [param('id').isUUID().withMessage('Invalid UUID')], validate, async (req, res, next) => {
+  try {
+    const pool = await poolPromise;
+    await pool
+      .request()
+      .input('id_tutor', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_EliminarTutor');
+    res.json({ message: 'Guardian deleted' });
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 module.exports = router;
