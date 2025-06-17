@@ -13,6 +13,7 @@ const validate = (req, res, next) => {
   }
   next();
 };
+
 /**
  * @swagger
  * /api/vaccinations:
@@ -107,10 +108,6 @@ router.get(
  *                 type: string
  *                 format: uuid
  *                 example: "550e8400-e29b-41d4-a716-446655440000"
- *               id_vacuna:
- *                 type: string
- *                 format: uuid
- *                 example: "550e8400-e29b-41d4-a716-446655440002"
  *               id_lote:
  *                 type: string
  *                 format: uuid
@@ -154,7 +151,6 @@ router.post(
   '/',
   [
     body('id_niño').isUUID().withMessage('Invalid UUID for id_niño'),
-    body('id_vacuna').isUUID().withMessage('Invalid UUID for id_vacuna'),
     body('id_lote').isUUID().withMessage('Invalid UUID for id_lote'),
     body('id_personal').isUUID().withMessage('Invalid UUID for id_personal'),
     body('fecha_vacunacion').isISO8601().toDate().withMessage('Invalid fecha_vacunacion'),
@@ -164,14 +160,13 @@ router.post(
   ],
   validate,
   async (req, res, next) => {
-    const { id_niño, id_vacuna, id_lote, id_personal, fecha_vacunacion, dosis_aplicada, sitio_aplicacion, observaciones } = req.body;
+    const { id_niño, id_lote, id_personal, fecha_vacunacion, dosis_aplicada, sitio_aplicacion, observaciones } = req.body;
 
     try {
       const pool = await poolPromise;
       const result = await pool
         .request()
         .input('id_niño', sql.UniqueIdentifier, id_niño)
-        .input('id_vacuna', sql.UniqueIdentifier, id_vacuna)
         .input('id_lote', sql.UniqueIdentifier, id_lote)
         .input('id_personal', sql.UniqueIdentifier, id_personal)
         .input('fecha_vacunacion', sql.DateTime2, fecha_vacunacion)
