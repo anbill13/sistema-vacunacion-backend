@@ -40,10 +40,6 @@ const validate = (req, res, next) => {
  *                     type: string
  *                     format: uuid
  *                     example: "550e8400-e29b-41d4-a716-446655440000"
- *                   id_vacuna:
- *                     type: string
- *                     format: uuid
- *                     example: "550e8400-e29b-41d4-a716-446655440002"
  *                   id_lote:
  *                     type: string
  *                     format: uuid
@@ -52,6 +48,10 @@ const validate = (req, res, next) => {
  *                     type: string
  *                     format: uuid
  *                     example: "550e8400-e29b-41d4-a716-446655440009"
+ *                   id_centro:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440011"
  *                   fecha_vacunacion:
  *                     type: string
  *                     format: date-time
@@ -116,6 +116,10 @@ router.get(
  *                 type: string
  *                 format: uuid
  *                 example: "550e8400-e29b-41d4-a716-446655440009"
+ *               id_centro:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440011"
  *               fecha_vacunacion:
  *                 type: string
  *                 format: date-time
@@ -153,6 +157,7 @@ router.post(
     body('id_niño').isUUID().withMessage('Invalid UUID for id_niño'),
     body('id_lote').isUUID().withMessage('Invalid UUID for id_lote'),
     body('id_personal').isUUID().withMessage('Invalid UUID for id_personal'),
+    body('id_centro').optional().isUUID().withMessage('Invalid UUID for id_centro'),
     body('fecha_vacunacion').isISO8601().toDate().withMessage('Invalid fecha_vacunacion'),
     body('dosis_aplicada').isInt({ min: 1 }).withMessage('Invalid dosis_aplicada'),
     body('sitio_aplicacion').optional().isString().trim().withMessage('Invalid sitio_aplicacion'),
@@ -160,7 +165,7 @@ router.post(
   ],
   validate,
   async (req, res, next) => {
-    const { id_niño, id_lote, id_personal, fecha_vacunacion, dosis_aplicada, sitio_aplicacion, observaciones } = req.body;
+    const { id_niño, id_lote, id_personal, id_centro, fecha_vacunacion, dosis_aplicada, sitio_aplicacion, observaciones } = req.body;
 
     try {
       const pool = await poolPromise;
@@ -169,6 +174,7 @@ router.post(
         .input('id_niño', sql.UniqueIdentifier, id_niño)
         .input('id_lote', sql.UniqueIdentifier, id_lote)
         .input('id_personal', sql.UniqueIdentifier, id_personal)
+        .input('id_centro', sql.UniqueIdentifier, id_centro || null)
         .input('fecha_vacunacion', sql.DateTime2, fecha_vacunacion)
         .input('dosis_aplicada', sql.Int, dosis_aplicada)
         .input('sitio_aplicacion', sql.NVarChar, sitio_aplicacion || null)
@@ -214,10 +220,6 @@ router.post(
  *                   type: string
  *                   format: uuid
  *                   example: "550e8400-e29b-41d4-a716-446655440000"
- *                 id_vacuna:
- *                   type: string
- *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440002"
  *                 id_lote:
  *                   type: string
  *                   format: uuid
@@ -226,6 +228,10 @@ router.post(
  *                   type: string
  *                   format: uuid
  *                   example: "550e8400-e29b-41d4-a716-446655440009"
+ *                 id_centro:
+ *                   type: string
+ *                   format: uuid
+ *                   example: "550e8400-e29b-41d4-a716-446655440011"
  *                 fecha_vacunacion:
  *                   type: string
  *                   format: date-time
@@ -293,10 +299,6 @@ router.get(
  *                 type: string
  *                 format: uuid
  *                 example: "550e8400-e29b-41d4-a716-446655440000"
- *               id_vacuna:
- *                 type: string
- *                 format: uuid
- *                 example: "550e8400-e29b-41d4-a716-446655440002"
  *               id_lote:
  *                 type: string
  *                 format: uuid
@@ -305,6 +307,10 @@ router.get(
  *                 type: string
  *                 format: uuid
  *                 example: "550e8400-e29b-41d4-a716-446655440009"
+ *               id_centro:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440011"
  *               fecha_vacunacion:
  *                 type: string
  *                 format: date-time
@@ -337,9 +343,9 @@ router.put(
   [
     param('id').isUUID().withMessage('Invalid UUID'),
     body('id_niño').isUUID().withMessage('Invalid UUID for id_niño'),
-    body('id_vacuna').isUUID().withMessage('Invalid UUID for id_vacuna'),
     body('id_lote').isUUID().withMessage('Invalid UUID for id_lote'),
     body('id_personal').isUUID().withMessage('Invalid UUID for id_personal'),
+    body('id_centro').optional().isUUID().withMessage('Invalid UUID for id_centro'),
     body('fecha_vacunacion').isISO8601().toDate().withMessage('Invalid fecha_vacunacion'),
     body('dosis_aplicada').isInt({ min: 1 }).withMessage('Invalid dosis_aplicada'),
     body('sitio_aplicacion').optional().isString().trim().withMessage('Invalid sitio_aplicacion'),
@@ -347,7 +353,7 @@ router.put(
   ],
   validate,
   async (req, res, next) => {
-    const { id_niño, id_vacuna, id_lote, id_personal, fecha_vacunacion, dosis_aplicada, sitio_aplicacion, observaciones } = req.body;
+    const { id_niño, id_lote, id_personal, id_centro, fecha_vacunacion, dosis_aplicada, sitio_aplicacion, observaciones } = req.body;
 
     try {
       const pool = await poolPromise;
@@ -355,9 +361,9 @@ router.put(
         .request()
         .input('id_historial', sql.UniqueIdentifier, req.params.id)
         .input('id_niño', sql.UniqueIdentifier, id_niño)
-        .input('id_vacuna', sql.UniqueIdentifier, id_vacuna)
         .input('id_lote', sql.UniqueIdentifier, id_lote)
         .input('id_personal', sql.UniqueIdentifier, id_personal)
+        .input('id_centro', sql.UniqueIdentifier, id_centro || null)
         .input('fecha_vacunacion', sql.DateTime2, fecha_vacunacion)
         .input('dosis_aplicada', sql.Int, dosis_aplicada)
         .input('sitio_aplicacion', sql.NVarChar, sitio_aplicacion || null)
