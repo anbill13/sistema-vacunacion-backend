@@ -189,7 +189,7 @@ router.post(
     body('password').isString().trim().notEmpty().withMessage('password is required'),
   ],
   validate,
-  async (req,25 res, next) => {
+  async (req, res, next) => { // Fixed: Removed the '25' typo
     const { username, password } = req.body;
 
     try {
