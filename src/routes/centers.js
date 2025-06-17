@@ -32,7 +32,57 @@ const validate = (req, res, next) => {
  *     tags: [Centers]
  *     security:
  *       - bearerAuth: []
- *     ...
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre_centro:
+ *                 type: string
+ *                 example: "Centro de Salud Santo Domingo"
+ *               nombre_corto:
+ *                 type: string
+ *                 example: "CSSD"
+ *               direccion:
+ *                 type: string
+ *                 example: "Calle 1, Santo Domingo"
+ *               latitud:
+ *                 type: number
+ *                 format: float
+ *                 example: 18.4861
+ *               longitud:
+ *                 type: number
+ *                 format: float
+ *                 example: -69.9312
+ *               telefono:
+ *                 type: string
+ *                 example: "8098765432"
+ *               director:
+ *                 type: string
+ *                 example: "Dr. José Gómez"
+ *               sitio_web:
+ *                 type: string
+ *                 format: url
+ *                 example: "http://cssd.gov.do"
+ *     responses:
+ *       201:
+ *         description: Centro creado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Center created"
+ *                 id_centro:
+ *                   type: string
+ *                   format: uuid
+ *                   example: "550e8400-e29b-41d4-a716-446655440001"
+ *       400:
+ *         description: Validación fallida
  */
 router.post(
   '/',
@@ -82,7 +132,12 @@ router.post(
  *     responses:
  *       200:
  *         description: Lista de centros de vacunación
- *         ...
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Center'
  */
 router.get('/', async (req, res, next) => {
   try {
@@ -102,7 +157,18 @@ router.get('/', async (req, res, next) => {
  *     tags: [Centers]
  *     security:
  *       - bearerAuth: []
- *     ...
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Centro encontrado
+ *       404:
+ *         description: Centro no encontrado
  */
 router.get(
   '/:id',
@@ -138,7 +204,25 @@ router.get(
  *     tags: [Centers]
  *     security:
  *       - bearerAuth: []
- *     ...
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             ...
+ *     responses:
+ *       200:
+ *         description: Centro actualizado
+ *       400:
+ *         description: Validación fallida
  */
 router.put(
   '/:id',
@@ -189,7 +273,16 @@ router.put(
  *     tags: [Centers]
  *     security:
  *       - bearerAuth: []
- *     ...
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Centro eliminado
  */
 router.delete(
   '/:id',
