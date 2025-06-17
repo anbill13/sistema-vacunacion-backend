@@ -1,6 +1,9 @@
 const express = require('express');
 const { body, param, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
+const authenticate = require('../middleware/auth');
+const checkRole = require('../middleware/role');
+
 const router = express.Router();
 
 const validate = (req, res, next) => {
@@ -27,60 +30,14 @@ const validate = (req, res, next) => {
  *   post:
  *     summary: Crea un nuevo centro de vacunación
  *     tags: [Centers]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               nombre_centro:
- *                 type: string
- *                 example: "Centro de Salud Santo Domingo"
- *               nombre_corto:
- *                 type: string
- *                 example: "CSSD"
- *               direccion:
- *                 type: string
- *                 example: "Calle 1, Santo Domingo"
- *               latitud:
- *                 type: number
- *                 format: float
- *                 example: 18.4861
- *               longitud:
- *                 type: number
- *                 format: float
- *                 example: -69.9312
- *               telefono:
- *                 type: string
- *                 example: "8098765432"
- *               director:
- *                 type: string
- *                 example: "Dr. José Gómez"
- *               sitio_web:
- *                 type: string
- *                 format: url
- *                 example: "http://cssd.gov.do"
- *     responses:
- *       201:
- *         description: Centro creado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Center created"
- *                 id_centro:
- *                   type: string
- *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440001"
- *       400:
- *         description: Validación fallida
+ *     security:
+ *       - bearerAuth: []
+ *     ...
  */
 router.post(
   '/',
+  authenticate,
+  checkRole(['director', 'administrador']),
   [
     body('nombre_centro').isString().trim().notEmpty().withMessage('nombre_centro is required'),
     body('nombre_corto').optional().isString().trim().withMessage('Invalid nombre_corto'),
@@ -116,63 +73,16 @@ router.post(
   }
 );
 
-
-/**
- * @swagger
- * tags:
- *   name: Centers
- *   description: Gestión de centros de vacunación
- */
-
 /**
  * @swagger
  * /api/centers:
  *   get:
  *     summary: Obtiene todos los centros de vacunación
  *     tags: [Centers]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Lista de centros de vacunación
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id_centro:
- *                     type: string
- *                     format: uuid
- *                     example: "550e8400-e29b-41d4-a716-446655440001"
- *                   nombre_centro:
- *                     type: string
- *                     example: "Centro de Salud Santo Domingo"
- *                   nombre_corto:
- *                     type: string
- *                     example: "CSSD"
- *                   direccion:
- *                     type: string
- *                     example: "Calle 1, Santo Domingo"
- *                   latitud:
- *                     type: number
- *                     format: float
- *                     example: 18.4861
- *                   longitud:
- *                     type: number
- *                     format: float
- *                     example: -69.9312
- *                   telefono:
- *                     type: string
- *                     example: "8098765432"
- *                   director:
- *                     type: string
- *                     example: "Dr. José Gómez"
- *                   sitio_web:
- *                     type: string
- *                     format: url
- *                     example: "http://cssd.gov.do"
+ *         ...
  */
 router.get('/', async (req, res, next) => {
   try {
@@ -192,58 +102,12 @@ router.get('/', async (req, res, next) => {
  *     tags: [Centers]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440001"
- *     responses:
- *       200:
- *         description: Centro encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id_centro:
- *                   type: string
- *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440001"
- *                 nombre_centro:
- *                   type: string
- *                   example: "Centro de Salud Santo Domingo"
- *                 nombre_corto:
- *                   type: string
- *                   example: "CSSD"
- *                 direccion:
- *                   type: string
- *                   example: "Calle 1, Santo Domingo"
- *                 latitud:
- *                   type: number
- *                   format: float
- *                   example: 18.4861
- *                 longitud:
- *                   type: number
- *                   format: float
- *                   example: -69.9312
- *                 telefono:
- *                   type: string
- *                   example: "8098765432"
- *                 director:
- *                   type: string
- *                   example: "Dr. José Gómez"
- *                 sitio_web:
- *                   type: string
- *                   format: url
- *                   example: "http://cssd.gov.do"
- *       404:
- *         description: Centro no encontrado
+ *     ...
  */
 router.get(
   '/:id',
+  authenticate,
+  checkRole(['director', 'administrador']),
   [param('id').isUUID().withMessage('Invalid UUID')],
   validate,
   async (req, res, next) => {
@@ -274,64 +138,12 @@ router.get(
  *     tags: [Centers]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440001"
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               nombre_centro:
- *                 type: string
- *                 example: "Centro de Salud Santo Domingo Actualizado"
- *               nombre_corto:
- *                 type: string
- *                 example: "CSSD"
- *               direccion:
- *                 type: string
- *                 example: "Calle 1, Santo Domingo"
- *               latitud:
- *                 type: number
- *                 format: float
- *                 example: 18.4861
- *               longitud:
- *                 type: number
- *                 format: float
- *                 example: -69.9312
- *               telefono:
- *                 type: string
- *                 example: "8098765432"
- *               director:
- *                 type: string
- *                 example: "Dr. José Gómez"
- *               sitio_web:
- *                 type: string
- *                 format: url
- *                 example: "http://cssd.gov.do"
- *     responses:
- *       200:
- *         description: Centro actualizado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Center updated"
- *       400:
- *         description: Validación fallida
+ *     ...
  */
 router.put(
   '/:id',
+  authenticate,
+  checkRole(['director', 'administrador']),
   [
     param('id').isUUID().withMessage('Invalid UUID'),
     body('nombre_centro').isString().trim().notEmpty().withMessage('nombre_centro is required'),
@@ -377,30 +189,12 @@ router.put(
  *     tags: [Centers]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440001"
- *     responses:
- *       200:
- *         description: Centro eliminado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Center deleted"
- *       400:
- *         description: Validación fallida
+ *     ...
  */
 router.delete(
   '/:id',
+  authenticate,
+  checkRole(['director', 'administrador']),
   [param('id').isUUID().withMessage('Invalid UUID')],
   validate,
   async (req, res, next) => {
