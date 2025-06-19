@@ -334,6 +334,9 @@ router.get(
 
 /**
  * @swagger
+<<<<<<< HEAD
+>>>>>>> b447ffd (cleanup)
+=======
 >>>>>>> b447ffd (cleanup)
  * /api/children/{id}:
  *   get:
@@ -416,6 +419,87 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
 <<<<<<< HEAD
 });
 =======
+);
+
+/**
+ * @swagger
+ * /api/children/center/{id}:
+ *   get:
+ *     summary: Obtiene todos los niños de un centro específico
+ *     tags: [Children]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *           example: "3BC990DD-9F0F-43A9-95F0-FD08821E70DA"
+ *     responses:
+ *       200:
+ *         description: Lista de niños del centro
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id_niño:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440000"
+ *                   nombre_completo:
+ *                     type: string
+ *                     example: "Juan Pérez"
+ *                   identificacion:
+ *                     type: string
+ *                     example: "001-1234567-8"
+ *                   nacionalidad:
+ *                     type: string
+ *                     enum: [Dominicano, Extranjero]
+ *                     example: "Dominicano"
+ *                   fecha_nacimiento:
+ *                     type: string
+ *                     format: date
+ *                     example: "2015-05-15"
+ *                   genero:
+ *                     type: string
+ *                     enum: [M, F, O]
+ *                     example: "M"
+ *                   id_centro_salud:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "3BC990DD-9F0F-43A9-95F0-FD08821E70DA"
+ *                   contacto_principal:
+ *                     type: string
+ *                     enum: [Madre, Padre, Tutor]
+ *                     example: "Madre"
+ *       404:
+ *         description: No se encontraron niños para el centro
+ */
+router.get(
+  '/center/:id',
+  [param('id').isUUID().withMessage('Invalid UUID')],
+  validate,
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('id_centro_salud', sql.UniqueIdentifier, req.params.id)
+        .execute('sp_ObtenerNinosPorCentro');
+
+      if (result.recordset.length === 0) {
+        const error = new Error('No children found for this center');
+        error.statusCode = 404;
+        throw error;
+      }
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
+  }
 );
 
 /**

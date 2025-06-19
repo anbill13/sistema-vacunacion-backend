@@ -397,6 +397,146 @@ router.delete('/:id', authenticate, checkRole(['director', 'administrador']), va
     if (err.number === 50001) return res.status(404).json({ error: err.message });
     res.status(500).json({ error: 'Error al desactivar centro' });
   }
+<<<<<<< HEAD
 });
+=======
+);
+
+/**
+ * @swagger
+ * /api/centers/{id}:
+ *   put:
+ *     summary: Actualiza un centro de vacunación
+ *     tags: [Centers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre_centro:
+ *                 type: string
+ *                 example: "Centro de Salud Santo Domingo Actualizado"
+ *               nombre_corto:
+ *                 type: string
+ *                 example: "CSSD"
+ *               direccion:
+ *                 type: string
+ *                 example: "Calle 1, Santo Domingo"
+ *               latitud:
+ *                 type: number
+ *                 format: float
+ *                 example: 18.4861
+ *               longitud:
+ *                 type: number
+ *                 format: float
+ *                 example: -69.9312
+ *               telefono:
+ *                 type: string
+ *                 example: "8098765432"
+ *               director:
+ *                 type: string
+ *                 example: "Dr. José Gómez"
+ *               sitio_web:
+ *                 type: string
+ *                 format: url
+ *                 example: "http://cssd.gov.do"
+ *     responses:
+ *       200:
+ *         description: Centro actualizado
+ *       400:
+ *         description: Validación fallida
+ */
+router.put(
+  '/:id',
+  authenticate,
+  checkRole(['director', 'administrador']),
+  [
+    param('id').isUUID().withMessage('Invalid UUID'),
+    body('nombre_centro').isString().trim().notEmpty().withMessage('nombre_centro is required'),
+    body('nombre_corto').optional().isString().trim().withMessage('Invalid nombre_corto'),
+    body('direccion').optional().isString().trim().withMessage('Invalid direccion'),
+    body('latitud').optional().isFloat({ min: -90, max: 90 }).withMessage('Invalid latitud'),
+    body('longitud').optional().isFloat({ min: -180, max: 180 }).withMessage('Invalid longitud'),
+    body('telefono').optional().isString().trim().withMessage('Invalid telefono'),
+    body('director').optional().isString().trim().withMessage('Invalid director'),
+    body('sitio_web').optional().isURL().withMessage('Invalid sitio_web'),
+  ],
+  validate,
+  async (req, res, next) => {
+    const { nombre_centro, nombre_corto, direccion, latitud, longitud, telefono, director, sitio_web } = req.body;
+
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_centro', sql.UniqueIdentifier, req.params.id)
+        .input('nombre_centro', sql.NVarChar, nombre_centro)
+        .input('nombre_corto', sql.NVarChar, nombre_corto || null)
+        .input('direccion', sql.NVarChar, direccion || null)
+        .input('latitud', sql.Decimal(9, 6), latitud || null)
+        .input('longitud', sql.Decimal(9, 6), longitud || null)
+        .input('telefono', sql.NVarChar, telefono || null)
+        .input('director', sql.NVarChar, director || null)
+        .input('sitio_web', sql.NVarChar, sitio_web || null)
+        .execute('sp_ActualizarCentroVacunacion');
+
+      res.json({ message: 'Center updated' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /api/centers/{id}:
+ *   delete:
+ *     summary: Elimina un centro de vacunación
+ *     tags: [Centers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Centro eliminado
+ */
+router.delete(
+  '/:id',
+  authenticate,
+  checkRole(['director', 'administrador']),
+  [param('id').isUUID().withMessage('Invalid UUID')],
+  validate,
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_centro', sql.UniqueIdentifier, req.params.id)
+        .execute('sp_EliminarCentroVacunacion');
+
+      res.json({ message: 'Center deactivated' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+>>>>>>> b447ffd (cleanup)
 
 module.exports = router;
