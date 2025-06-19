@@ -266,7 +266,39 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
  *       content:
  *         application/json:
  *           schema:
+<<<<<<< HEAD
  *             $ref: '#/components/schemas/CenterInput'
+=======
+ *             type: object
+ *             properties:
+ *               nombre_centro:
+ *                 type: string
+ *                 example: "Centro de Salud Santo Domingo Actualizado"
+ *               nombre_corto:
+ *                 type: string
+ *                 example: "CSSD"
+ *               direccion:
+ *                 type: string
+ *                 example: "Calle 1, Santo Domingo"
+ *               latitud:
+ *                 type: number
+ *                 format: float
+ *                 example: 18.4861
+ *               longitud:
+ *                 type: number
+ *                 format: float
+ *                 example: -69.9312
+ *               telefono:
+ *                 type: string
+ *                 example: "8098765432"
+ *               director:
+ *                 type: string
+ *                 example: "Dr. José Gómez"
+ *               sitio_web:
+ *                 type: string
+ *                 format: url
+ *                 example: "http://cssd.gov.do"
+>>>>>>> b447ffd (cleanup)
  *     responses:
  *       200:
  *         description: Centro actualizado
