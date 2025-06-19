@@ -13,6 +13,7 @@ const validate = (req, res, next) => {
   }
   next();
 };
+
 /**
  * @swagger
  * /api/children:
@@ -187,9 +188,10 @@ router.get(
  *                 type: string
  *                 enum: [Dominicano, Extranjero]
  *                 example: "Dominicano"
- *               pais_nacimiento:
+ *               id_pais_nacimiento:
  *                 type: string
- *                 example: "República Dominicana"
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440004"
  *               fecha_nacimiento:
  *                 type: string
  *                 format: date
@@ -243,16 +245,12 @@ router.post(
   [
     body('nombre_completo').isString().trim().notEmpty().withMessage('Full name is required'),
     body('identificacion').isString().trim().notEmpty().withMessage('Identification is required'),
-    body('nacionalidad')
-      .isIn(['Dominicano', 'Extranjero'])
-      .withMessage('Nationality must be Dominicano or Extranjero'),
+    body('nacionalidad').isIn(['Dominicano', 'Extranjero']).withMessage('Nationality must be Dominicano or Extranjero'),
+    body('id_pais_nacimiento').optional().isUUID().withMessage('Invalid UUID for id_pais_nacimiento'),
     body('fecha_nacimiento').isDate().withMessage('Invalid birth date'),
     body('genero').isIn(['M', 'F', 'O']).withMessage('Gender must be M, F, or O'),
     body('id_centro_salud').optional().isUUID().withMessage('Invalid UUID for health center'),
-    body('contacto_principal')
-      .optional()
-      .isIn(['Madre', 'Padre', 'Tutor'])
-      .withMessage('Contact must be Madre, Padre, or Tutor'),
+    body('contacto_principal').optional().isIn(['Madre', 'Padre', 'Tutor']).withMessage('Contact must be Madre, Padre, or Tutor'),
   ],
   validate,
   async (req, res, next) => {
@@ -260,7 +258,7 @@ router.post(
       nombre_completo,
       identificacion,
       nacionalidad,
-      pais_nacimiento,
+      id_pais_nacimiento,
       fecha_nacimiento,
       genero,
       direccion_residencia,
@@ -278,7 +276,7 @@ router.post(
         .input('nombre_completo', sql.NVarChar, nombre_completo)
         .input('identificacion', sql.NVarChar, identificacion)
         .input('nacionalidad', sql.NVarChar, nacionalidad)
-        .input('pais_nacimiento', sql.NVarChar, pais_nacimiento || null)
+        .input('id_pais_nacimiento', sql.UniqueIdentifier, id_pais_nacimiento || null)
         .input('fecha_nacimiento', sql.Date, fecha_nacimiento)
         .input('genero', sql.Char, genero)
         .input('direccion_residencia', sql.NVarChar, direccion_residencia || null)
@@ -327,9 +325,10 @@ router.post(
  *                 type: string
  *                 enum: [Dominicano, Extranjero]
  *                 example: "Dominicano"
- *               pais_nacimiento:
+ *               id_pais_nacimiento:
  *                 type: string
- *                 example: "República Dominicana"
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440004"
  *               fecha_nacimiento:
  *                 type: string
  *                 format: date
@@ -380,16 +379,12 @@ router.put(
     param('id').isUUID().withMessage('Invalid UUID'),
     body('nombre_completo').isString().trim().notEmpty().withMessage('Full name is required'),
     body('identificacion').isString().trim().notEmpty().withMessage('Identification is required'),
-    body('nacionalidad')
-      .isIn(['Dominicano', 'Extranjero'])
-      .withMessage('Nationality must be Dominicano or Extranjero'),
+    body('nacionalidad').isIn(['Dominicano', 'Extranjero']).withMessage('Nationality must be Dominicano or Extranjero'),
+    body('id_pais_nacimiento').optional().isUUID().withMessage('Invalid UUID for id_pais_nacimiento'),
     body('fecha_nacimiento').isDate().withMessage('Invalid birth date'),
     body('genero').isIn(['M', 'F', 'O']).withMessage('Gender must be M, F, or O'),
     body('id_centro_salud').optional().isUUID().withMessage('Invalid UUID for health center'),
-    body('contacto_principal')
-      .optional()
-      .isIn(['Madre', 'Padre', 'Tutor'])
-      .withMessage('Contact must be Madre, Padre, or Tutor'),
+    body('contacto_principal').optional().isIn(['Madre', 'Padre', 'Tutor']).withMessage('Contact must be Madre, Padre, or Tutor'),
   ],
   validate,
   async (req, res, next) => {
@@ -397,7 +392,7 @@ router.put(
       nombre_completo,
       identificacion,
       nacionalidad,
-      pais_nacimiento,
+      id_pais_nacimiento,
       fecha_nacimiento,
       genero,
       direccion_residencia,
@@ -416,7 +411,7 @@ router.put(
         .input('nombre_completo', sql.NVarChar, nombre_completo)
         .input('identificacion', sql.NVarChar, identificacion)
         .input('nacionalidad', sql.NVarChar, nacionalidad)
-        .input('pais_nacimiento', sql.NVarChar, pais_nacimiento || null)
+        .input('id_pais_nacimiento', sql.UniqueIdentifier, id_pais_nacimiento || null)
         .input('fecha_nacimiento', sql.Date, fecha_nacimiento)
         .input('genero', sql.Char, genero)
         .input('direccion_residencia', sql.NVarChar, direccion_residencia || null)
@@ -474,7 +469,7 @@ router.delete(
         .input('id_niño', sql.UniqueIdentifier, req.params.id)
         .execute('sp_EliminarNino');
 
-      res.json({ message: 'Child deleted successfully' });
+      res.json({ message: 'Child deactivated' });
     } catch (error) {
       next(error);
     }

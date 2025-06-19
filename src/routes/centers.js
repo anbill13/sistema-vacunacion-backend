@@ -298,7 +298,7 @@ router.delete(
         .input('id_centro', sql.UniqueIdentifier, req.params.id)
         .execute('sp_EliminarCentroVacunacion');
 
-      res.json({ message: 'Center deleted' });
+      res.json({ message: 'Center deactivated' });
     } catch (error) {
       next(error);
     }

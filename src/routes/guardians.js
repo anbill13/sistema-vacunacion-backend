@@ -42,6 +42,10 @@ const validate = (req, res, next) => {
  *                 type: string
  *                 enum: [Dominicano, Extranjero]
  *                 example: "Dominicano"
+ *               id_pais_nacimiento:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440004"
  *               identificacion:
  *                 type: string
  *                 example: "001-7654321-9"
@@ -80,6 +84,7 @@ router.post(
     body('nombre').isString().trim().notEmpty().withMessage('nombre is required'),
     body('relacion').isIn(['Madre', 'Padre', 'Tutor Legal']).withMessage('Invalid relacion'),
     body('nacionalidad').isIn(['Dominicano', 'Extranjero']).withMessage('Invalid nacionalidad'),
+    body('id_pais_nacimiento').optional().isUUID().withMessage('Invalid UUID for id_pais_nacimiento'),
     body('identificacion').optional().isString().trim().withMessage('Invalid identificacion'),
     body('telefono').optional().isString().trim().withMessage('Invalid telefono'),
     body('email').optional().isEmail().withMessage('Invalid email'),
@@ -87,7 +92,7 @@ router.post(
   ],
   validate,
   async (req, res, next) => {
-    const { id_niño, nombre, identificacion, relacion, telefono, email, direccion, nacionalidad } = req.body;
+    const { id_niño, nombre, identificacion, relacion, telefono, email, direccion, nacionalidad, id_pais_nacimiento } = req.body;
 
     try {
       const pool = await poolPromise;
@@ -101,6 +106,7 @@ router.post(
         .input('email', sql.NVarChar, email || null)
         .input('direccion', sql.NVarChar, direccion || null)
         .input('nacionalidad', sql.NVarChar, nacionalidad)
+        .input('id_pais_nacimiento', sql.UniqueIdentifier, id_pais_nacimiento || null)
         .execute('sp_CrearTutor');
 
       res.status(201).json({ message: 'Guardian and user created', id_tutor: result.recordset[0].id_tutor });
@@ -212,6 +218,10 @@ router.get(
  *                 type: string
  *                 enum: [Dominicano, Extranjero]
  *                 example: "Dominicano"
+ *               id_pais_nacimiento:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440004"
  *               identificacion:
  *                 type: string
  *                 example: "001-7654321-9"
@@ -250,6 +260,7 @@ router.post(
     body('nombre').isString().trim().notEmpty().withMessage('nombre is required'),
     body('relacion').isIn(['Madre', 'Padre', 'Tutor Legal']).withMessage('Invalid relacion'),
     body('nacionalidad').isIn(['Dominicano', 'Extranjero']).withMessage('Invalid nacionalidad'),
+    body('id_pais_nacimiento').optional().isUUID().withMessage('Invalid UUID for id_pais_nacimiento'),
     body('identificacion').optional().isString().trim().withMessage('Invalid identificacion'),
     body('telefono').optional().isString().trim().withMessage('Invalid telefono'),
     body('email').optional().isEmail().withMessage('Invalid email'),
@@ -257,7 +268,7 @@ router.post(
   ],
   validate,
   async (req, res, next) => {
-    const { id_niño, nombre, identificacion, relacion, telefono, email, direccion, nacionalidad } = req.body;
+    const { id_niño, nombre, identificacion, relacion, telefono, email, direccion, nacionalidad, id_pais_nacimiento } = req.body;
 
     try {
       const pool = await poolPromise;
@@ -271,6 +282,7 @@ router.post(
         .input('email', sql.NVarChar, email || null)
         .input('direccion', sql.NVarChar, direccion || null)
         .input('nacionalidad', sql.NVarChar, nacionalidad)
+        .input('id_pais_nacimiento', sql.UniqueIdentifier, id_pais_nacimiento || null)
         .execute('sp_CrearTutor');
 
       res.status(201).json({ message: 'Guardian created', id_tutor: result.recordset[0].id_tutor });
@@ -397,6 +409,10 @@ router.get(
  *                 type: string
  *                 enum: [Dominicano, Extranjero]
  *                 example: "Dominicano"
+ *               id_pais_nacimiento:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440004"
  *               identificacion:
  *                 type: string
  *                 example: "001-7654321-9"
@@ -432,6 +448,7 @@ router.put(
     body('nombre').isString().trim().notEmpty().withMessage('nombre is required'),
     body('relacion').isIn(['Madre', 'Padre', 'Tutor Legal']).withMessage('Invalid relacion'),
     body('nacionalidad').isIn(['Dominicano', 'Extranjero']).withMessage('Invalid nacionalidad'),
+    body('id_pais_nacimiento').optional().isUUID().withMessage('Invalid UUID for id_pais_nacimiento'),
     body('identificacion').optional().isString().trim().withMessage('Invalid identificacion'),
     body('telefono').optional().isString().trim().withMessage('Invalid telefono'),
     body('email').optional().isEmail().withMessage('Invalid email'),
@@ -439,7 +456,7 @@ router.put(
   ],
   validate,
   async (req, res, next) => {
-    const { id_niño, nombre, identificacion, relacion, telefono, email, direccion, nacionalidad } = req.body;
+    const { id_niño, nombre, identificacion, relacion, telefono, email, direccion, nacionalidad, id_pais_nacimiento } = req.body;
 
     try {
       const pool = await poolPromise;
@@ -454,6 +471,7 @@ router.put(
         .input('email', sql.NVarChar, email || null)
         .input('direccion', sql.NVarChar, direccion || null)
         .input('nacionalidad', sql.NVarChar, nacionalidad)
+        .input('id_pais_nacimiento', sql.UniqueIdentifier, id_pais_nacimiento || null)
         .execute('sp_ActualizarTutor');
 
       res.json({ message: 'Guardian updated' });
@@ -503,7 +521,7 @@ router.delete(
         .input('id_tutor', sql.UniqueIdentifier, req.params.id)
         .execute('sp_EliminarTutor');
 
-      res.json({ message: 'Guardian deleted' });
+      res.json({ message: 'Guardian deactivated' });
     } catch (error) {
       next(error);
     }

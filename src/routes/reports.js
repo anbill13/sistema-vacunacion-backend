@@ -289,6 +289,7 @@ router.get(
     }
   }
 );
+
 /**
  * @swagger
  * /api/supplies:
@@ -357,4 +358,5 @@ router.get(
     }
   }
 );
+
 module.exports = router;

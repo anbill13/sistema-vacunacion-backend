@@ -359,7 +359,6 @@ router.put(
       const pool = await poolPromise;
       await pool
         .request()
-        .input('id_historial', sql.UniqueIdentifier, req.params.id)
         .input('id_niño', sql.UniqueIdentifier, id_niño)
         .input('id_lote', sql.UniqueIdentifier, id_lote)
         .input('id_personal', sql.UniqueIdentifier, id_personal)
