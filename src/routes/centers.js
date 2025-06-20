@@ -54,6 +54,17 @@ const router = express.Router();
  *           type: string
  *           enum: [Activo, Inactivo]
  *           description: Estado del centro
+ *       example:
+ *         id_centro: "123e4567-e89b-12d3-a456-426614174002"
+ *         nombre_centro: "Centro de Vacunación Central"
+ *         nombre_corto: "CVC"
+ *         direccion: "Calle Principal 123, Ciudad"
+ *         latitud: 18.4667
+ *         longitud: -69.9333
+ *         telefono: "809-555-1234"
+ *         director: "Dr. Juan Pérez"
+ *         sitio_web: "http://cvc.example.com"
+ *         estado: "Activo"
  *     CenterInput:
  *       type: object
  *       required:
@@ -82,6 +93,37 @@ const router = express.Router();
  *         sitio_web:
  *           type: string
  *           nullable: true
+ *     Child:
+ *       type: object
+ *       required:
+ *         - nombre
+ *         - id_centro
+ *       properties:
+ *         id_nino:
+ *           type: string
+ *           format: uuid
+ *           description: Identificador único del niño
+ *         nombre:
+ *           type: string
+ *           description: Nombre del niño
+ *         fecha_nacimiento:
+ *           type: string
+ *           format: date
+ *           description: Fecha de nacimiento del niño
+ *         id_centro:
+ *           type: string
+ *           format: uuid
+ *           description: ID del centro asociado
+ *         estado:
+ *           type: string
+ *           enum: [Activo, Inactivo]
+ *           description: Estado del niño
+ *       example:
+ *         id_nino: "123e4567-e89b-12d3-a456-426614174003"
+ *         nombre: "Ana López"
+ *         fecha_nacimiento: "2018-05-15"
+ *         id_centro: "123e4567-e89b-12d3-a456-426614174002"
+ *         estado: "Activo"
  */
 
 const validateCenter = [
@@ -320,6 +362,62 @@ router.delete(
         .input('id_centro', sql.UniqueIdentifier, req.params.id)
         .execute('sp_EliminarCentroVacunacion');
       res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /api/centers/{id}/children:
+ *   get:
+ *     summary: Obtener todos los niños asociados a un centro de vacunación
+ *     tags: [Centers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del centro de vacunación
+ *     responses:
+ *       200:
+ *         description: Lista de niños obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Child'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Centro no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get(
+  '/:id/children',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('id_centro', sql.UniqueIdentifier, req.params.id)
+        .execute('sp_ObtenerNinosPorCentro');
+
+      if (result.recordset.length === 0) {
+        const error = new Error('No se encontraron niños para este centro');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      res.status(200).json(result.recordset);
     } catch (err) {
       next(err);
     }
