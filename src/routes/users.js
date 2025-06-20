@@ -3,10 +3,11 @@ const { body, param } = require('express-validator');
 const { authenticate, checkRole } = require('../middleware/auth');
 const { poolPromise, sql } = require('../config/db');
 const { logger } = require('../config/db');
-const jwt = require('jsonwebtoken'); // Asegúrate de instalar jsonwebtoken: npm install jsonwebtoken
-const bcrypt = require('bcrypt'); // Asegúrate de instalar bcrypt: npm install bcrypt
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
-const router = express.Router();
+// Initialize the router
+const router = express.Router(); // Add this line
 
 /**
  * @swagger
@@ -330,7 +331,7 @@ router.put(
         .input('email', sql.NVarChar, req.body.email)
         .input('password', sql.NVarChar, hashedPassword || null)
         .input('rol', sql.NVarChar, req.body.rol)
-        .query('UPDATE Usuarios SET username = @username, email = @email, password = COALESCE(@password, password), rol = @rol WHERE id_usuario = @id_usuario'); // Nota: No hay stored procedure, usar UPDATE directo
+        .query('UPDATE Usuarios SET username = @username, email = @email, password = COALESCE(@password, password), rol = @rol WHERE id_usuario = @id_usuario');
       res.status(204).send();
     } catch (err) {
       next(err);
@@ -372,7 +373,7 @@ router.delete(
       await pool
         .request()
         .input('id_usuario', sql.UniqueIdentifier, req.params.id)
-        .query('DELETE FROM Usuarios WHERE id_usuario = @id_usuario'); // Nota: No hay stored procedure, usar DELETE directo
+        .query('DELETE FROM Usuarios WHERE id_usuario = @id_usuario');
       res.status(204).send();
     } catch (err) {
       next(err);

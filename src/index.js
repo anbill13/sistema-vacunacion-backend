@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const errorHandler = require('./middleware/errorHandler');
-const { authenticate, checkRole } = require('./middleware/auth'); // Ajustado a la estructura de middleware proporcionada
+const { authenticate, checkRole } = require('./middleware/auth');
 const { logger } = require('./config/db');
 require('dotenv').config();
 
@@ -54,108 +54,46 @@ app.get('/test-swagger', (req, res) => {
   res.json(swaggerSpecs);
 });
 
-// Rutas públicas (sin autenticación requerida)
-app.use('/api/users', usersRoutes);
-app.use('/api/children', childrenRoutes);
-app.use('/api/guardians', guardiansRoutes);
-app.use('/api/centers', centersRoutes);
-app.use('/api/countries', countriesRoutes); // Añadido
+// Ruta pública específica para login
+app.use('/api/users/login', usersRoutes);
 
 // Rutas protegidas con autenticación y acceso basado en roles
-app.use(
-  '/api/vaccines',
-  [authenticate, checkRole(['director', 'administrador'])], // Gestionar vacunas
-  vaccinesRoutes
-);
+// Gestión de usuarios (solo administrador)
+app.use('/api/users', [authenticate, checkRole(['administrador'])], usersRoutes);
 
-app.use(
-  '/api/vaccination-history',
-  [authenticate, checkRole(['doctor', 'administrador'])], // Gestionar historial de vacunación
-  vaccinationHistoryRoutes
-);
+app.use('/api/children', [authenticate, checkRole(['doctor', 'administrador'])], childrenRoutes);
+app.use('/api/guardians', [authenticate, checkRole(['doctor', 'administrador'])], guardiansRoutes);
+app.use('/api/centers', [authenticate, checkRole(['director', 'administrador'])], centersRoutes);
+app.use('/api/countries', [authenticate, checkRole(['director', 'administrador'])], countriesRoutes);
 
-app.use(
-  '/api/appointments',
-  [authenticate, checkRole(['doctor', 'administrador'])], // Gestionar citas
-  appointmentsRoutes
-);
+app.use('/api/vaccines', [authenticate, checkRole(['director', 'administrador'])], vaccinesRoutes);
+app.use('/api/vaccine-lots', [authenticate, checkRole(['director', 'administrador'])], vaccineLotsRoutes);
 
-app.use(
-  '/api/adverse-events',
-  [authenticate, checkRole(['doctor', 'administrador'])], // Reportar eventos adversos
-  adverseEventsRoutes
-);
+app.use('/api/vaccination-history', [authenticate, checkRole(['doctor', 'administrador'])], vaccinationHistoryRoutes);
+app.use('/api/appointments', [authenticate, checkRole(['doctor', 'administrador'])], appointmentsRoutes);
 
-app.use(
-  '/api/vaccine-lots',
-  [authenticate, checkRole(['director', 'administrador'])], // Gestionar lotes de vacunas
-  vaccineLotsRoutes
-);
+app.use('/api/adverse-events', [authenticate, checkRole(['doctor', 'administrador'])], adverseEventsRoutes);
 
-app.use(
-  '/api/health-staff',
-  [authenticate, checkRole(['director', 'administrador'])], // Gestionar personal de salud
-  healthStaffRoutes
-);
+app.use('/api/health-staff', [authenticate, checkRole(['director', 'administrador'])], healthStaffRoutes);
 
-app.use(
-  '/api/campaigns',
-  [authenticate, checkRole(['director', 'administrador'])], // Gestionar campañas
-  campaignsRoutes
-);
+app.use('/api/campaigns', [authenticate, checkRole(['director', 'administrador'])], campaignsRoutes);
+app.use('/api/campaign-assignments', [authenticate, checkRole(['director', 'administrador'])], campaignAssignmentsRoutes);
 
-app.use(
-  '/api/campaign-assignments',
-  [authenticate, checkRole(['director', 'administrador'])], // Asignar campañas
-  campaignAssignmentsRoutes
-);
+app.use('/api/supplies', [authenticate, checkRole(['director', 'administrador'])], suppliesRoutes);
+app.use('/api/supply-usage', [authenticate, checkRole(['doctor', 'administrador'])], supplyUsageRoutes);
 
-app.use(
-  '/api/supplies',
-  [authenticate, checkRole(['director', 'administrador'])], // Gestionar inventario
-  suppliesRoutes
-);
+app.use('/api/vaccination-schedules', [authenticate, checkRole(['director', 'administrador'])], vaccinationSchedulesRoutes);
+app.use('/api/national-calendars', [authenticate, checkRole(['director', 'administrador'])], nationalCalendarsRoutes);
 
-app.use(
-  '/api/supply-usage',
-  [authenticate, checkRole(['doctor', 'administrador'])], // Registrar uso de insumos
-  supplyUsageRoutes
-);
+app.use('/api/audits', [authenticate, checkRole(['director', 'administrador'])], auditsRoutes);
+app.use('/api/alerts', [authenticate, checkRole(['doctor', 'director', 'administrador'])], alertsRoutes);
 
-app.use(
-  '/api/vaccination-schedules',
-  [authenticate, checkRole(['director', 'administrador'])], // Gestionar calendarios
-  vaccinationSchedulesRoutes
-);
+app.use('/api/reports', [authenticate, checkRole(['director', 'administrador'])], reportsRoutes);
 
-app.use(
-  '/api/national-calendars',
-  [authenticate, checkRole(['director', 'administrador'])], // Gestionar calendarios nacionales
-  nationalCalendarsRoutes
-);
-
-app.use(
-  '/api/audits',
-  [authenticate, checkRole(['director', 'administrador'])], // Auditar
-  auditsRoutes
-);
-
-app.use(
-  '/api/alerts',
-  [authenticate, checkRole(['doctor', 'director', 'administrador'])], // Gestionar alertas
-  alertsRoutes
-);
-
-app.use(
-  '/api/reports',
-  [authenticate, checkRole(['director', 'administrador'])], // Generar reportes
-  reportsRoutes
-);
-
-// Middleware de manejo de errores
 app.use(errorHandler);
 
-// Iniciar servidor
 app.listen(port, () => {
   logger.info(`Server running on port ${port}`);
 });
+
+module.exports = app; // Exportar app para pruebas si es necesario

@@ -1,0 +1,298 @@
+const express = require('express');
+const router = express.Router();
+const { poolPromise, sql } = require('../config/db');
+const { authenticate, checkRole } = require('../middleware/auth');
+const { param, body } = require('express-validator');
+
+/**
+ * @swagger
+ * tags:
+ *   name: SupplyUsage
+ *   description: API endpoints for managing supply usage
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     SupplyUsage:
+ *       type: object
+ *       properties:
+ *         id_uso:
+ *           type: string
+ *           format: uuid
+ *         id_suministro:
+ *           type: string
+ *           format: uuid
+ *         id_personal:
+ *           type: string
+ *           format: uuid
+ *         fecha_uso:
+ *           type: string
+ *           format: date-time
+ *         cantidad:
+ *           type: number
+ *         descripcion:
+ *           type: string
+ *         estado:
+ *           type: string
+ *           enum: [Registrado, Anulado]
+ *       required:
+ *         - id_uso
+ *         - id_suministro
+ *         - id_personal
+ *         - fecha_uso
+ *         - cantidad
+ *         - estado
+ *     SupplyUsageInput:
+ *       type: object
+ *       properties:
+ *         id_suministro:
+ *           type: string
+ *           format: uuid
+ *         id_personal:
+ *           type: string
+ *           format: uuid
+ *         fecha_uso:
+ *           type: string
+ *           format: date-time
+ *         cantidad:
+ *           type: number
+ *         descripcion:
+ *           type: string
+ *         estado:
+ *           type: string
+ *           enum: [Registrado, Anulado]
+ *       required:
+ *         - id_suministro
+ *         - id_personal
+ *         - fecha_uso
+ *         - cantidad
+ *         - estado
+ */
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
+
+const validateSupplyUsage = [
+  body('id_suministro').isUUID().withMessage('ID de suministro inválido'),
+  body('id_personal').isUUID().withMessage('ID de personal inválido'),
+  body('fecha_uso').isISO8601().withMessage('Fecha de uso inválida'),
+  body('cantidad').isFloat({ min: 0 }).withMessage('Cantidad debe ser un número positivo'),
+  body('descripcion').optional().isString().withMessage('Descripción debe ser una cadena'),
+  body('estado').isIn(['Registrado', 'Anulado']).withMessage('Estado inválido'),
+];
+
+/**
+ * @swagger
+ * /api/supply-usage:
+ *   get:
+ *     summary: Retrieve all supply usage records
+ *     tags: [SupplyUsage]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: A list of supply usage records
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/SupplyUsage'
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request().execute('sp_ListarUsosSuministros');
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @swagger
+ * /api/supply-usage/{id}:
+ *   get:
+ *     summary: Retrieve a supply usage record by ID
+ *     tags: [SupplyUsage]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the supply usage record
+ *     responses:
+ *       200:
+ *         description: Supply usage record details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SupplyUsage'
+ *       404:
+ *         description: Supply usage record not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID], async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id_uso', sql.UniqueIdentifier, req.params.id)
+            .execute('sp_ObtenerUsoSuministroPorId');
+        if (result.recordset.length > 0) {
+            res.json(result.recordset[0]);
+        } else {
+            res.status(404).json({ error: 'Uso de suministro no encontrado' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @swagger
+ * /api/supply-usage:
+ *   post:
+ *     summary: Create a new supply usage record
+ *     tags: [SupplyUsage]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SupplyUsageInput'
+ *     responses:
+ *       201:
+ *         description: Supply usage record created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id_uso:
+ *                   type: string
+ *                   format: uuid
+ *       400:
+ *         description: Bad request (e.g., missing required fields)
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/', [authenticate, checkRole(['doctor', 'administrador']), validateSupplyUsage], async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id_suministro', sql.UniqueIdentifier, req.body.id_suministro)
+            .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
+            .input('fecha_uso', sql.DateTime2, req.body.fecha_uso)
+            .input('cantidad', sql.Float, req.body.cantidad)
+            .input('descripcion', sql.NVarChar, req.body.descripcion)
+            .input('estado', sql.NVarChar, req.body.estado)
+            .execute('sp_CrearUsoSuministro');
+        res.status(201).json({ id_uso: result.recordset[0].id_uso });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @swagger
+ * /api/supply-usage/{id}:
+ *   put:
+ *     summary: Update an existing supply usage record
+ *     tags: [SupplyUsage]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the supply usage record to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SupplyUsageInput'
+ *     responses:
+ *       200:
+ *         description: Supply usage record updated successfully
+ *       400:
+ *         description: Bad request (e.g., missing required fields)
+ *       404:
+ *         description: Supply usage record not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID, validateSupplyUsage], async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id_uso', sql.UniqueIdentifier, req.params.id)
+            .input('id_suministro', sql.UniqueIdentifier, req.body.id_suministro)
+            .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
+            .input('fecha_uso', sql.DateTime2, req.body.fecha_uso)
+            .input('cantidad', sql.Float, req.body.cantidad)
+            .input('descripcion', sql.NVarChar, req.body.descripcion)
+            .input('estado', sql.NVarChar, req.body.estado)
+            .execute('sp_ActualizarUsoSuministro');
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Uso de suministro no encontrado' });
+        }
+        res.status(200).json({ message: 'Uso de suministro actualizado' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @swagger
+ * /api/supply-usage/{id}:
+ *   delete:
+ *     summary: Delete a supply usage record
+ *     tags: [SupplyUsage]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the supply usage record to delete
+ *     responses:
+ *       200:
+ *         description: Supply usage record deleted successfully
+ *       404:
+ *         description: Supply usage record not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID], async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id_uso', sql.UniqueIdentifier, req.params.id)
+            .execute('sp_EliminarUsoSuministro');
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Uso de suministro no encontrado' });
+        }
+        res.status(200).json({ message: 'Uso de suministro eliminado' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+module.exports = router;
