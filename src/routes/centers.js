@@ -37,9 +37,151 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
 /**
  * @swagger
+ * openapi: 3.0.3
+ * info:
+ *   title: Vaccination Centers API
+ *   description: API para la gestión de centros de vacunación y niños asociados
+ *   version: 1.0.0
+ * servers:
+ *   - url: /api
+ *     description: Base URL for the API
+ * components:
+ *   schemas:
+ *     Center:
+ *       type: object
+ *       properties:
+ *         id_centro:
+ *           type: string
+ *           format: uuid
+ *           description: Identificador único del centro de vacunación
+ *           example: "3031019A-8658-4567-B284-D610A8AC7766"
+ *         nombre_centro:
+ *           type: string
+ *           description: Nombre completo del centro
+ *           example: "Hospital Darío Contreras"
+ *         nombre_corto:
+ *           type: string
+ *           nullable: true
+ *           description: Nombre abreviado del centro
+ *           example: "HDC"
+ *         direccion:
+ *           type: string
+ *           nullable: true
+ *           description: Dirección del centro
+ *           example: "Av. Independencia 257, Santo Domingo"
+ *         latitud:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *           description: Latitud del centro
+ *           example: 18.4824
+ *         longitud:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *           description: Longitud del centro
+ *           example: -69.9269
+ *         telefono:
+ *           type: string
+ *           nullable: true
+ *           description: Teléfono del centro
+ *           example: "+1-809-532-0001"
+ *         director:
+ *           type: string
+ *           nullable: true
+ *           description: Nombre del director del centro
+ *           example: "Dr. Juan Gómez"
+ *         sitio_web:
+ *           type: string
+ *           format: uri
+ *           nullable: true
+ *           description: Sitio web del centro
+ *           example: "http://www.hospitaldariocontreras.do"
+ *         estado:
+ *           type: string
+ *           description: Estado del centro (e.g., Activo, Inactivo)
+ *           example: "Activo"
+ *       required:
+ *         - id_centro
+ *         - nombre_centro
+ *         - estado
+ *     CenterInput:
+ *       type: object
+ *       properties:
+ *         nombre_centro:
+ *           type: string
+ *           description: Nombre completo del centro
+ *           example: "Hospital Darío Contreras"
+ *         nombre_corto:
+ *           type: string
+ *           nullable: true
+ *           description: Nombre abreviado del centro
+ *           example: "HDC"
+ *         direccion:
+ *           type: string
+ *           nullable: true
+ *           description: Dirección del centro
+ *           example: "Av. Independencia 257, Santo Domingo"
+ *         latitud:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *           description: Latitud del centro
+ *           example: 18.4824
+ *         longitud:
+ *           type: number
+ *           format: float
+ *           nullable: true
+ *           description: Longitud del centro
+ *           example: -69.9269
+ *         telefono:
+ *           type: string
+ *           nullable: true
+ *           description: Teléfono del centro
+ *           example: "+1-809-532-0001"
+ *         director:
+ *           type: string
+ *           nullable: true
+ *           description: Nombre del director del centro
+ *           example: "Dr. Juan Gómez"
+ *         sitio_web:
+ *           type: string
+ *           format: uri
+ *           nullable: true
+ *           description: Sitio web del centro
+ *           example: "http://www.hospitaldariocontreras.do"
+ *       required:
+ *         - nombre_centro
+ *     Child:
+ *       type: object
+ *       properties:
+ *         id_nino:
+ *           type: string
+ *           format: uuid
+ *           description: Identificador único del niño
+ *           example: "4A3B2C1D-1234-5678-9012-3456789ABCDE"
+ *         nombre:
+ *           type: string
+ *           description: Nombre del niño
+ *           example: "Juan Pérez"
+ *         fecha_nacimiento:
+ *           type: string
+ *           format: date
+ *           description: Fecha de nacimiento del niño
+ *           example: "2018-05-20"
+ *         id_centro:
+ *           type: string
+ *           format: uuid
+ *           description: ID del centro de vacunación asociado
+ *           example: "3031019A-8658-4567-B284-D610A8AC7766"
+ *       required:
+ *         - id_nino
+ *         - nombre
+ *         - fecha_nacimiento
+ *         - id_centro
  * tags:
- *   name: Centers
- *   description: Gestión de centros de vacunación
+ *   - name: Centers
+ *     description: Gestión de centros de vacunación
  */
 
 /**
@@ -66,6 +208,7 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Error al obtener centros
  */
 router.get('/', async (req, res, next) => {
   try {
@@ -111,10 +254,18 @@ router.get('/', async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Validación fallida
  *                 data:
  *                   type: array
  *                   items:
  *                     type: object
+ *                     properties:
+ *                       msg:
+ *                         type: string
+ *                       param:
+ *                         type: string
+ *                       location:
+ *                         type: string
  *       404:
  *         description: Centro no encontrado
  *         content:
@@ -124,6 +275,7 @@ router.get('/', async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Centro no encontrado
  *       500:
  *         description: Error interno del servidor
  *         content:
@@ -133,6 +285,7 @@ router.get('/', async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Error al obtener centro
  */
 router.get('/:id', validateUUID, async (req, res, next) => {
   try {
@@ -176,17 +329,33 @@ router.get('/:id', validateUUID, async (req, res, next) => {
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CenterInput'
+ *           example:
+ *             nombre_centro: "Hospital Darío Contreras"
+ *             nombre_corto: "HDC"
+ *             direccion: "Av. Independencia 257, Santo Domingo"
+ *             latitud: 18.4824
+ *             longitud: -69.9269
+ *             telefono: "+1-809-532-0001"
+ *             director: "Dr. Juan Gómez"
+ *             sitio_web: "http://www.hospitaldariocontreras.do"
  *     responses:
  *       201:
  *         description: Centro creado exitosamente
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 id_centro:
- *                   type: string
- *                   format: uuid
+ *               $ref: '#/components/schemas/Center'
+ *             example:
+ *               id_centro: "3031019A-8658-4567-B284-D610A8AC7766"
+ *               nombre_centro: "Hospital Darío Contreras"
+ *               nombre_corto: "HDC"
+ *               direccion: "Av. Independencia 257, Santo Domingo"
+ *               latitud: 18.4824
+ *               longitud: -69.9269
+ *               telefono: "+1-809-532-0001"
+ *               director: "Dr. Juan Gómez"
+ *               sitio_web: "http://www.hospitaldariocontreras.do"
+ *               estado: "Activo"
  *       400:
  *         description: Error en los datos enviados
  *         content:
@@ -196,10 +365,18 @@ router.get('/:id', validateUUID, async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Validación fallida
  *                 data:
  *                   type: array
  *                   items:
  *                     type: object
+ *                     properties:
+ *                       msg:
+ *                         type: string
+ *                       param:
+ *                         type: string
+ *                       location:
+ *                         type: string
  *       500:
  *         description: Error interno del servidor
  *         content:
@@ -209,6 +386,7 @@ router.get('/:id', validateUUID, async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Error al crear centro
  */
 router.post('/', validateCenter, async (req, res, next) => {
   try {
@@ -233,7 +411,9 @@ router.post('/', validateCenter, async (req, res, next) => {
       .input('director', sql.NVarChar, req.body.director || null)
       .input('sitio_web', sql.NVarChar, req.body.sitio_web || null)
       .execute('sp_CrearCentroVacunacion');
-    res.status(201).json({ id_centro: result.recordset[0].id_centro });
+    // Assuming the stored procedure returns the full center object
+    const newCenter = result.recordset[0];
+    res.status(201).json(newCenter);
   } catch (err) {
     logger.error('Error al crear centro', { error: err.message, ip: req.ip });
     const error = new Error('Error al crear centro');
@@ -263,6 +443,15 @@ router.post('/', validateCenter, async (req, res, next) => {
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CenterInput'
+ *           example:
+ *             nombre_centro: "Hospital Darío Contreras"
+ *             nombre_corto: "HDC"
+ *             direccion: "Av. Independencia 257, Santo Domingo"
+ *             latitud: 18.4824
+ *             longitud: -69.9269
+ *             telefono: "+1-809-532-0001"
+ *             director: "Dr. Juan Gómez"
+ *             sitio_web: "http://www.hospitaldariocontreras.do"
  *     responses:
  *       204:
  *         description: Centro actualizado exitosamente
@@ -275,10 +464,18 @@ router.post('/', validateCenter, async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Validación fallida
  *                 data:
  *                   type: array
  *                   items:
  *                     type: object
+ *                     properties:
+ *                       msg:
+ *                         type: string
+ *                       param:
+ *                         type: string
+ *                       location:
+ *                         type: string
  *       404:
  *         description: Centro no encontrado
  *         content:
@@ -288,6 +485,7 @@ router.post('/', validateCenter, async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Centro no encontrado
  *       500:
  *         description: Error interno del servidor
  *         content:
@@ -297,6 +495,7 @@ router.post('/', validateCenter, async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Error al actualizar centro
  */
 router.put('/:id', [validateUUID, validateCenter], async (req, res, next) => {
   try {
@@ -366,10 +565,18 @@ router.put('/:id', [validateUUID, validateCenter], async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Validación fallida
  *                 data:
  *                   type: array
  *                   items:
  *                     type: object
+ *                     properties:
+ *                       msg:
+ *                         type: string
+ *                       param:
+ *                         type: string
+ *                       location:
+ *                         type: string
  *       404:
  *         description: Centro no encontrado
  *         content:
@@ -379,6 +586,7 @@ router.put('/:id', [validateUUID, validateCenter], async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Centro no encontrado
  *       500:
  *         description: Error interno del servidor
  *         content:
@@ -388,6 +596,7 @@ router.put('/:id', [validateUUID, validateCenter], async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Error al eliminar centro
  */
 router.delete('/:id', validateUUID, async (req, res, next) => {
   try {
@@ -455,10 +664,18 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Validación fallida
  *                 data:
  *                   type: array
  *                   items:
  *                     type: object
+ *                     properties:
+ *                       msg:
+ *                         type: string
+ *                       param:
+ *                         type: string
+ *                       location:
+ *                         type: string
  *       404:
  *         description: Centro no encontrado
  *         content:
@@ -468,6 +685,7 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Centro no encontrado
  *       500:
  *         description: Error interno del servidor
  *         content:
@@ -477,6 +695,7 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
  *               properties:
  *                 error:
  *                   type: string
+ *                   example: Error al obtener niños
  */
 router.get('/:id/children', validateUUID, async (req, res, next) => {
   try {
