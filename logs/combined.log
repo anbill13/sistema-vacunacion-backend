@@ -95,3 +95,68 @@
 {"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T20:17:54.723Z"}
 {"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T20:17:54.726Z"}
 {"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T20:17:59.651Z"}
+{"body":{"email":"user@example.com","id_centro":"1b5a552d-de96-4bc9-adef-0ecb98422926","nombre":"bill perez","password":"12345","rol":"administrador","telefono":"string","username":"bperez"},"ip":"::1","level":"info","message":"POST /api/users","params":{},"query":{},"timestamp":"2025-06-20T20:19:03.172Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers","params":{},"query":{},"timestamp":"2025-06-20T20:19:21.358Z"}
+{"ip":"::1","level":"info","message":"Obteniendo centros de vacunación","timestamp":"2025-06-20T20:19:21.359Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers","params":{},"query":{},"timestamp":"2025-06-20T20:23:18.037Z"}
+{"ip":"::1","level":"info","message":"Obteniendo centros de vacunación","timestamp":"2025-06-20T20:23:18.037Z"}
+{"body":{"direccion":"Av. Independencia 257, Santo Domingo","director":"Dr. Juan Gómez","latitud":18.4824,"longitud":-69.9269,"nombre_centro":"Hospital Darío Contreras","nombre_corto":"HDC","sitio_web":"http://www.hospitaldariocontreras.do","telefono":"+1-809-532-0001"},"ip":"::1","level":"info","message":"POST /api/centers","params":{},"query":{},"timestamp":"2025-06-20T20:23:32.304Z"}
+{"ip":"::1","level":"info","message":"Creando centro de vacunación","nombre":"Hospital Darío Contreras","timestamp":"2025-06-20T20:23:32.307Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers/BDD45F1D-1DF6-4036-874F-E8258D1BFFE1","params":{},"query":{},"timestamp":"2025-06-20T20:23:44.785Z"}
+{"id":"BDD45F1D-1DF6-4036-874F-E8258D1BFFE1","ip":"::1","level":"info","message":"Obteniendo centro por ID","timestamp":"2025-06-20T20:23:44.786Z"}
+{"body":{"direccion":"Av. Independencia 257, Santo Domingo","director":"Dr. Juan Gómez","latitud":18.4824,"longitud":-69.9269,"nombre_centro":"Hospital Darío Contreras","nombre_corto":"ADC","sitio_web":"http://www.hospitaldariocontreras.do","telefono":"+1-809-532-0001"},"ip":"::1","level":"info","message":"PUT /api/centers/BDD45F1D-1DF6-4036-874F-E8258D1BFFE1","params":{},"query":{},"timestamp":"2025-06-20T20:24:00.235Z"}
+{"id":"BDD45F1D-1DF6-4036-874F-E8258D1BFFE1","ip":"::1","level":"info","message":"Actualizando centro","nombre":"Hospital Darío Contreras","timestamp":"2025-06-20T20:24:00.236Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers/BDD45F1D-1DF6-4036-874F-E8258D1BFFE1/children","params":{},"query":{},"timestamp":"2025-06-20T20:24:18.006Z"}
+{"id":"BDD45F1D-1DF6-4036-874F-E8258D1BFFE1","ip":"::1","level":"info","message":"Obteniendo niños por centro","timestamp":"2025-06-20T20:24:18.007Z"}
+{"error":"Invalid object name 'Ninos'.","id":"BDD45F1D-1DF6-4036-874F-E8258D1BFFE1","ip":"::1","level":"error","message":"Error al obtener niños","timestamp":"2025-06-20T20:24:18.315Z"}
+{"error":"Invalid object name 'Ninos'.","ip":"::1","level":"error","message":"Error en la aplicación","method":"GET","stack":"RequestError: Invalid object name 'Ninos'.\n    at handleError (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\mssql\\lib\\tedious\\request.js:738:15)\n    at Connection.emit (node:events:518:28)\n    at Connection.emit (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\connection.js:970:18)\n    at RequestTokenHandler.onErrorMessage (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\token\\handler.js:284:21)\n    at Readable.<anonymous> (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\token\\token-stream-parser.js:19:33)\n    at Readable.emit (node:events:518:28)\n    at addChunk (node:internal/streams/readable:561:12)\n    at readableAddChunkPushObjectMode (node:internal/streams/readable:538:3)\n    at Readable.push (node:internal/streams/readable:393:5)\n    at nextAsync (node:internal/streams/from:194:22)","timestamp":"2025-06-20T20:24:18.318Z","url":"/api/centers/BDD45F1D-1DF6-4036-874F-E8258D1BFFE1/children"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T20:37:43.605Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T20:37:43.828Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T20:37:43.838Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T20:37:43.845Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T20:37:43.846Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T20:37:47.393Z"}
+{"body":{"email":"user@example.com","id_centro":"1B5A552D-DE96-4BC9-ADEF-0ECB98422926","nombre":"bill perez","password":"1234","rol":"administrador","telefono":"string","username":"aperez"},"ip":"::1","level":"info","message":"POST /api/users","params":{},"query":{},"timestamp":"2025-06-20T20:38:34.675Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T20:38:58.772Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T20:38:58.942Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T20:38:58.949Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T20:38:58.950Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T20:38:58.954Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T20:39:01.755Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T20:39:36.833Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T20:39:36.905Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T20:39:36.913Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T20:39:36.914Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T20:39:36.915Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T20:39:38.944Z"}
+{"body":{"email":"user@example.com","id_centro":"3fa85f64-5717-4562-b3fc-2c963f66afa6","nombre":"string","password":"string","rol":"doctor","telefono":"string","username":"string"},"ip":"::1","level":"info","message":"POST /api/users","params":{},"query":{},"timestamp":"2025-06-20T20:39:47.180Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T20:46:37.367Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T20:46:37.485Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T20:46:37.493Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T20:46:37.501Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T20:46:37.502Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T20:46:40.138Z"}
+{"body":{"email":"user@example.com","id_centro":"3fa85f64-5717-4562-b3fc-2c963f66afa6","nombre":"string","password":"string","rol":"doctor","telefono":"string","username":"string"},"ip":"::1","level":"info","message":"POST /api/users","params":{},"query":{},"timestamp":"2025-06-20T20:46:43.380Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T20:48:15.588Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T20:48:15.728Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T20:48:15.733Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T20:48:15.736Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T20:48:15.743Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T20:48:18.585Z"}
+{"body":{"email":"user@example.com","id_centro":"3fa85f64-5717-4562-b3fc-2c963f66afa6","nombre":"string","password":"string","rol":"doctor","telefono":"string","username":"string"},"ip":"::1","level":"info","message":"POST /api/users","params":{},"query":{},"timestamp":"2025-06-20T20:48:31.855Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T20:51:04.166Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T20:51:04.175Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T20:51:04.176Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T20:51:04.177Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T20:51:04.178Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T20:51:04.746Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T20:51:52.088Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T20:51:52.096Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T20:51:52.097Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T20:51:52.098Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T20:51:52.099Z"}
+{"body":{"email":"user@example.com","id_centro":"3fa85f64-5717-4562-b3fc-2c963f66afa6","nombre":"string","password":"string","rol":"doctor","telefono":"string","username":"string"},"ip":"::1","level":"info","message":"POST /api/users","params":{},"query":{},"timestamp":"2025-06-20T20:51:57.594Z"}
+{"body":{"email":"user@example.com","id_centro":"3fa85f64-5717-4562-b3fc-2c963f66afa6","nombre":"string","password":"string","rol":"doctor","telefono":"string","username":"string"},"ip":"::1","level":"info","message":"POST /api/users","params":{},"query":{},"timestamp":"2025-06-20T20:52:14.273Z"}
+{"body":{"email":"user@example.com","id_centro":"3fa85f64-5717-4562-b3fc-2c963f66afa6","nombre":"string","password":"string","rol":"doctor","telefono":"string","username":"string"},"ip":"::1","level":"info","message":"POST /api/users","params":{},"query":{},"timestamp":"2025-06-20T20:54:19.915Z"}
+{"body":{"email":"user@example.com","id_centro":"3fa85f64-5717-4562-b3fc-2c963f66afa6","nombre":"string","password":"string","rol":"doctor","telefono":"string","username":"string"},"ip":"::1","level":"info","message":"POST /api/users","params":{},"query":{},"timestamp":"2025-06-20T20:54:57.007Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T20:55:12.370Z"}

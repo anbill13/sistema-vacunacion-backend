@@ -4,8 +4,10 @@ const sql = require('mssql');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('../config/db.js');
+const { authenticate, restrictTo } = require('../middleware/auth.js'); // Importa el middleware de autenticación y autorización
 const router = express.Router();
 
+// Middleware para manejar errores de validación
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -16,6 +18,18 @@ const validate = (req, res, next) => {
   }
   next();
 };
+
+// Validaciones para los endpoints
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
+const validateUser = [
+  body('nombre').notEmpty().isString().withMessage('Nombre es requerido'),
+  body('rol').isIn(['doctor', 'director', 'responsable', 'administrador']).withMessage('Rol inválido'),
+  body('id_centro').optional().isUUID().withMessage('ID de centro inválido'),
+  body('username').notEmpty().isString().withMessage('Nombre de usuario es requerido'),
+  body('password').notEmpty().isString().withMessage('Contraseña es requerida'),
+  body('email').optional().isEmail().withMessage('Email inválido'),
+  body('telefono').optional().isMobilePhone('any').withMessage('Teléfono inválido'),
+];
 
 /**
  * @swagger
@@ -126,17 +140,6 @@ const validate = (req, res, next) => {
  *           estado: "Activo"
  */
 
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-const validateUser = [
-  body('nombre').notEmpty().isString().withMessage('Nombre es requerido'),
-  body('rol').isIn(['doctor', 'director', 'responsable', 'administrador']).withMessage('Rol inválido'),
-  body('id_centro').optional().isUUID().withMessage('ID de centro inválido'),
-  body('username').notEmpty().isString().withMessage('Nombre de usuario es requerido'),
-  body('password').notEmpty().isString().withMessage('Contraseña es requerida'),
-  body('email').optional().isEmail(),
-  body('telefono').optional().isString(),
-];
-
 /**
  * @swagger
  * /api/users:
@@ -154,19 +157,18 @@ const validateUser = [
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/User'
+ *       401:
+ *         description: No autorizado
  *       500:
  *         description: Error del servidor
  */
-router.get('/', async (req, res) => {
+router.get('/', authenticate, async (req, res, next) => {
   try {
     const pool = await sql.connect(config);
-    const result = await pool.request().query(`
-      SELECT id_usuario, nombre, rol, id_centro, username, email, telefono, estado
-      FROM Usuarios WHERE estado = 'Activo'
-    `);
+    const result = await pool.request().execute('sp_ObtenerUsuariosActivos');
     res.json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener usuarios' });
+    next(new Error('Error al obtener usuarios: ' + (process.env.NODE_ENV === 'development' ? err.message : '')));
   }
 });
 
@@ -197,34 +199,39 @@ router.get('/', async (req, res) => {
  *                   format: uuid
  *       400:
  *         description: Error en los datos enviados
+ *       401:
+ *         description: No autorizado
  *       403:
- *         description: No autorizado (requiere rol de administrador)
+ *         description: Requiere rol de administrador
  *       500:
  *         description: Error del servidor
  */
-router.post('/', validateUser, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
+router.post('/', authenticate, restrictTo('administrador'), validateUser, validate, async (req, res, next) => {
   const { nombre, rol, id_centro, username, password, email, telefono } = req.body;
+
+  // Normalizar parámetros opcionales
+  const id_centro_normalized = id_centro && id_centro.trim() !== '' ? id_centro : null;
+  const telefono_normalized = telefono && telefono.trim() !== '' ? telefono : null;
 
   try {
     const password_hash = await bcrypt.hash(password, 10);
     const pool = await sql.connect(config);
     const result = await pool.request()
       .input('nombre', sql.NVarChar, nombre)
-      .input('rol', sql.NVarChar, rol)
-      .input('id_centro', sql.UniqueIdentifier, id_centro)
       .input('username', sql.NVarChar, username)
-      .input('password_hash', sql.NVarChar, password_hash)
       .input('email', sql.NVarChar, email)
-      .input('telefono', sql.NVarChar, telefono)
+      .input('password_hash', sql.NVarChar, password_hash)
+      .input('rol', sql.NVarChar, rol)
+      .input('id_centro', sql.UniqueIdentifier, id_centro_normalized)
+      .input('telefono', sql.NVarChar, telefono_normalized)
       .execute('sp_CrearUsuario');
 
     res.status(201).json({ id_usuario: result.recordset[0].id_usuario });
   } catch (err) {
-    if (err.number === 50001 || err.number === 50002) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al crear usuario' });
+    if (err.number === 50001) {
+      return res.status(400).json({ error: err.message });
+    }
+    next(new Error('Error al crear usuario: ' + (process.env.NODE_ENV === 'development' ? err.message : '')));
   }
 });
 
@@ -279,6 +286,8 @@ router.post('/', validateUser, async (req, res) => {
  *         description: Credenciales inválidas
  *       403:
  *         description: Cuenta de usuario inactiva
+ *       500:
+ *         description: Error del servidor
  */
 router.post(
   '/login',
@@ -316,6 +325,10 @@ router.post(
         const error = new Error('Invalid credentials');
         error.statusCode = 401;
         throw error;
+      }
+
+      if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET no está configurado');
       }
 
       const token = jwt.sign(
@@ -360,25 +373,28 @@ router.post(
  *               $ref: '#/components/schemas/User'
  *       400:
  *         description: ID inválido
+ *       401:
+ *         description: No autorizado
  *       404:
  *         description: Usuario no encontrado
  *       500:
  *         description: Error del servidor
  */
-router.get('/:id', validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
+router.get('/:id', authenticate, validateUUID, validate, async (req, res, next) => {
   try {
     const pool = await sql.connect(config);
     const result = await pool.request()
       .input('id_usuario', sql.UniqueIdentifier, req.params.id)
       .execute('sp_ObtenerUsuario');
 
-    if (!result.recordset[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!result.recordset[0]) {
+      const error = new Error('Usuario no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
     res.json(result.recordset[0]);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener usuario' });
+    next(err);
   }
 });
 
@@ -417,18 +433,21 @@ router.get('/:id', validateUUID, async (req, res) => {
  *                   example: Usuario actualizado
  *       400:
  *         description: Error en los datos enviados
+ *       401:
+ *         description: No autorizado
  *       403:
- *         description: No autorizado (requiere rol de administrador)
+ *         description: Requiere rol de administrador
  *       404:
  *         description: Usuario no encontrado
  *       500:
  *         description: Error del servidor
  */
-router.put('/:id', validateUUID, validateUser, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
+router.put('/:id', authenticate, restrictTo('administrador'), validateUUID, validateUser, validate, async (req, res, next) => {
   const { nombre, rol, id_centro, username, password, email, telefono } = req.body;
+
+  // Normalizar parámetros opcionales
+  const id_centro_normalized = id_centro && id_centro.trim() !== '' ? id_centro : null;
+  const telefono_normalized = telefono && telefono.trim() !== '' ? telefono : null;
 
   try {
     const password_hash = await bcrypt.hash(password, 10);
@@ -436,18 +455,20 @@ router.put('/:id', validateUUID, validateUser, async (req, res) => {
     await pool.request()
       .input('id_usuario', sql.UniqueIdentifier, req.params.id)
       .input('nombre', sql.NVarChar, nombre)
-      .input('rol', sql.NVarChar, rol)
-      .input('id_centro', sql.UniqueIdentifier, id_centro)
       .input('username', sql.NVarChar, username)
-      .input('password_hash', sql.NVarChar, password_hash)
       .input('email', sql.NVarChar, email)
-      .input('telefono', sql.NVarChar, telefono)
+      .input('password_hash', sql.NVarChar, password_hash)
+      .input('rol', sql.NVarChar, rol)
+      .input('id_centro', sql.UniqueIdentifier, id_centro_normalized)
+      .input('telefono', sql.NVarChar, telefono_normalized)
       .execute('sp_ActualizarUsuario');
 
     res.json({ message: 'Usuario actualizado' });
   } catch (err) {
-    if (err.number === 50001 || err.number === 50002) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al actualizar usuario' });
+    if (err.number === 50001 || err.number === 50002) {
+      return res.status(400).json({ error: err.message });
+    }
+    next(new Error('Error al actualizar usuario: ' + (process.env.NODE_ENV === 'development' ? err.message : '')));
   }
 });
 
@@ -480,17 +501,16 @@ router.put('/:id', validateUUID, validateUser, async (req, res) => {
  *                   example: Usuario desactivado
  *       400:
  *         description: ID inválido
+ *       401:
+ *         description: No autorizado
  *       403:
- *         description: No autorizado (requiere rol de administrador)
+ *         description: Requiere rol de administrador
  *       404:
  *         description: Usuario no encontrado
  *       500:
  *         description: Error del servidor
  */
-router.delete('/:id', validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
+router.delete('/:id', authenticate, restrictTo('administrador'), validateUUID, validate, async (req, res, next) => {
   try {
     const pool = await sql.connect(config);
     await pool.request()
@@ -499,8 +519,10 @@ router.delete('/:id', validateUUID, async (req, res) => {
 
     res.json({ message: 'Usuario desactivado' });
   } catch (err) {
-    if (err.number === 50001) return res.status(404).json({ error: err.message });
-    res.status(500).json({ error: 'Error al desactivar usuario' });
+    if (err.number === 50001) {
+      return res.status(404).json({ error: err.message });
+    }
+    next(new Error('Error al desactivar usuario: ' + (process.env.NODE_ENV === 'development' ? err.message : '')));
   }
 });
 
