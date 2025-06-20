@@ -40,6 +40,7 @@ const vaccinationHistoryRoutes = require('./routes/vaccinationHistory');
 const countriesRoutes = require('./routes/countries');
 const supplyUsageRoutes = require('./routes/supplyUsage');
 const reportsRoutes = require('./routes/reports');
+const authRoutes = require('./routes/auth'); // Ensure this line is present and correct
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
@@ -63,15 +64,10 @@ app.use((req, res, next) => {
 // Configura Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
-// Rutas de prueba
-app.get('/test-swagger', (req, res) => {
-  res.json(swaggerSpecs);
-});
-
 // Rutas públicas
-app.use('/api/users/login', usersRoutes);
-app.use('/api/centers', centersRoutes); // Mount all centers routes, GET /api/centers is public in centers.js
-app.use('/api/users', usersRoutes);
+app.use('/api/login', authRoutes); // Confirm this line is present
+app.use('/api/centers', centersRoutes); // Public GET /api/centers
+app.use('/api/users', usersRoutes); // All other user endpoints
 
 // Rutas protegidas
 app.use('/api/children', [authenticate, checkRole(['doctor', 'administrador'])], childrenRoutes);

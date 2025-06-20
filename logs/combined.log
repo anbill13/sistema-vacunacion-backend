@@ -464,3 +464,77 @@
 {"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T22:17:51.223Z"}
 {"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T22:17:51.225Z"}
 {"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T22:17:55.123Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T22:20:20.858Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T22:20:20.945Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T22:20:20.951Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T22:20:20.952Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T22:20:20.956Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T22:20:22.801Z"}
+{"ip":"::1","level":"info","message":"GET /api/users","params":{},"query":{},"timestamp":"2025-06-20T22:20:28.883Z"}
+{"ip":"::1","level":"info","message":"Obteniendo usuarios activos","timestamp":"2025-06-20T22:20:28.888Z"}
+{"body":{"password":"1111","username":"0000"},"ip":"::1","level":"info","message":"POST /api/users/login","params":{},"query":{},"timestamp":"2025-06-20T22:20:41.432Z"}
+{"ip":"::1","level":"info","message":"Creando usuario","timestamp":"2025-06-20T22:20:41.433Z","username":"0000"}
+{"error":"Error al crear usuario","ip":"::1","level":"error","message":"Error en la aplicación","method":"POST","stack":"Error: Error al crear usuario\n    at C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\routes\\users.js:537:19\n    at Layer.handleRequest (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\lib\\route.js:157:13)\n    at middleware (C:\\Users\\tiffa\\sistema-vacunacion-backend\\node_modules\\express-validator\\lib\\middlewares\\check.js:16:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)","timestamp":"2025-06-20T22:20:41.434Z","url":"/api/users/login"}
+{"errors":[{"location":"body","msg":"Invalid value","path":"nombre","type":"field"},{"location":"body","msg":"Nombre es requerido","path":"nombre","type":"field"},{"location":"body","msg":"Rol inválido","path":"rol","type":"field"}],"ip":"::1","level":"warn","message":"Validación fallida","timestamp":"2025-06-20T22:20:41.433Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Error al crear usuario","timestamp":"2025-06-20T22:20:41.433Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-20T22:25:22.085Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T22:25:38.758Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T22:25:38.858Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T22:25:38.863Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T22:25:38.866Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T22:25:38.868Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T22:25:42.024Z"}
+{"body":{"password":"password123","username":"juanperez"},"ip":"::1","level":"info","message":"POST /users/login","params":{},"query":{},"timestamp":"2025-06-20T22:26:14.628Z"}
+{"body":{"password":"1111","username":"0000"},"ip":"::1","level":"info","message":"POST /users/login","params":{},"query":{},"timestamp":"2025-06-20T22:26:24.512Z"}
+{"body":{"password":"password123","username":"anderson"},"ip":"::1","level":"info","message":"POST /users/login","params":{},"query":{},"timestamp":"2025-06-20T22:26:35.985Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T22:27:44.409Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T22:27:44.518Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T22:27:44.525Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T22:27:44.533Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T22:27:44.535Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T22:27:47.320Z"}
+{"body":{"password":"password123","username":"juanperez"},"ip":"::1","level":"info","message":"POST /users/login","params":{},"query":{},"timestamp":"2025-06-20T22:27:57.680Z"}
+{"body":{"password":"1111","username":"0000"},"ip":"::1","level":"info","message":"POST /users/login","params":{},"query":{},"timestamp":"2025-06-20T22:28:05.208Z"}
+{"body":{"password":"11111","username":"0000"},"ip":"::1","level":"info","message":"POST /users/login","params":{},"query":{},"timestamp":"2025-06-20T22:28:09.858Z"}
+{"body":{"password":"123","username":"admin"},"ip":"::1","level":"info","message":"POST /users/login","params":{},"query":{},"timestamp":"2025-06-20T22:28:28.553Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-20T22:29:36.888Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T22:29:38.950Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T22:29:39.026Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T22:29:39.031Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T22:29:39.032Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T22:29:39.038Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T22:29:42.578Z"}
+{"body":{"password":"password123","username":"juanperez"},"ip":"::1","level":"info","message":"POST /users/login","params":{},"query":{},"timestamp":"2025-06-20T22:29:48.783Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T22:32:35.101Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T22:32:35.178Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T22:32:35.185Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T22:32:35.190Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T22:32:35.193Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T22:32:37.185Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-20T22:32:51.545Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T22:32:51.764Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T22:32:51.817Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T22:32:51.821Z"}
+{"ip":"::ffff:127.0.0.1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T22:32:51.822Z"}
+{"ip":"::ffff:127.0.0.1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T22:32:51.825Z"}
+{"ip":"::ffff:127.0.0.1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T22:32:53.592Z"}
+{"ip":"::ffff:127.0.0.1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T22:32:55.284Z"}
+{"ip":"::ffff:127.0.0.1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T22:32:55.299Z"}
+{"ip":"::ffff:127.0.0.1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T22:32:55.300Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T22:32:55.302Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T22:32:55.419Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T22:36:49.340Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T22:36:49.442Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T22:36:49.457Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T22:36:49.459Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T22:36:49.463Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T22:36:51.773Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-20T22:36:59.242Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T22:37:01.782Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T22:37:01.827Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T22:37:01.831Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T22:37:01.836Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T22:37:01.836Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T22:37:03.412Z"}
+{"body":{"password":"1111","username":"0000"},"ip":"::1","level":"info","message":"POST /login","params":{},"query":{},"timestamp":"2025-06-20T22:37:14.003Z"}
+{"body":{"password":"1111","username":"0000"},"ip":"::1","level":"info","message":"POST /login","params":{},"query":{},"timestamp":"2025-06-20T22:37:49.871Z"}
