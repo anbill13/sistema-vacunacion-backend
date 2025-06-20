@@ -39,6 +39,7 @@ const countriesRoutes = require('./routes/countries');
 const supplyUsageRoutes = require('./routes/supplyUsage');
 const reportsRoutes = require('./routes/reports');
 const authRoutes = require('./routes/auth');
+const guardians = require('./routes/guardian');
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
@@ -84,7 +85,7 @@ app.use('/api/national-calendars', nationalCalendarsRoutes);
 app.use('/api/audits', auditsRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/reports', reportsRoutes);
-
+app.use('/api/guardians', guardians);
 app.use(errorHandler);
 
 app.listen(port, () => {
