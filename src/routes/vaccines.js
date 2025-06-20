@@ -1,9 +1,10 @@
 const express = require('express');
+const { body, param } = require('express-validator');
+const { authenticate, checkRole } = require('../middleware/auth');
+const { poolPromise, sql } = require('../config/db');
+const { logger } = require('../config/db');
+
 const router = express.Router();
-const { body, param, validationResult } = require('express-validator');
-const sql = require('mssql');
-const { authenticate } = require('../middleware/auth');
-const config = require('../config/dbConfig');
 
 /**
  * @swagger
@@ -40,12 +41,6 @@ const config = require('../config/dbConfig');
  *         dosis_requeridas:
  *           type: integer
  *           description: Número de dosis requeridas
- *       example:
- *         id_vacuna: "123e4567-e89b-12d3-a456-426614174003"
- *         nombre: "Pfizer-BioNTech"
- *         fabricante: "Pfizer"
- *         tipo: "ARNm"
- *         dosis_requeridas: 2
  *     VaccineInput:
  *       type: object
  *       required:
@@ -64,25 +59,26 @@ const config = require('../config/dbConfig');
  *           type: integer
  */
 
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
 const validateVaccine = [
   body('nombre').notEmpty().isString().withMessage('Nombre es requerido'),
   body('fabricante').notEmpty().isString().withMessage('Fabricante es requerido'),
   body('tipo').notEmpty().isString().withMessage('Tipo es requerido'),
-  body('dosis_requeridas').isInt({ min: 1 }).withMessage('Dosis requeridas debe ser un entero positivo'),
+  body('dosis_requeridas').isInt({ min: 1 }).withMessage('Dosis requeridas debe ser un número positivo'),
 ];
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
 /**
  * @swagger
  * /api/vaccines:
  *   get:
- *     summary: Obtener todas las vacunas
+ *     summary: Listar todas las vacunas
  *     tags: [Vaccines]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de vacunas
+ *         description: Lista de vacunas obtenida exitosamente
  *         content:
  *           application/json:
  *             schema:
@@ -90,18 +86,62 @@ const validateVaccine = [
  *               items:
  *                 $ref: '#/components/schemas/Vaccine'
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.get('/', authenticate, async (req, res) => {
+router.get('/', [authenticate, checkRole(['director', 'administrador'])], async (req, res, next) => {
   try {
-    const pool = await sql.connect(config);
-    const result = await pool.request().query(`
-      SELECT id_vacuna, nombre, fabricante, tipo, dosis_requeridas
-      FROM Vacunas
-    `);
-    res.json(result.recordset);
+    const pool = await poolPromise;
+    const result = await pool.request().query('SELECT * FROM Vacunas');
+    res.status(200).json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener vacunas' });
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/vaccines/{id}:
+ *   get:
+ *     summary: Obtener una vacuna por ID
+ *     tags: [Vaccines]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Vacuna obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Vaccine'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Vacuna no encontrada
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID], async (req, res, next) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT * FROM Vacunas WHERE id_vacuna = @id_vacuna');
+    if (result.recordset.length === 0) {
+      const error = new Error('Vacuna no encontrada');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json(result.recordset[0]);
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -133,75 +173,27 @@ router.get('/', authenticate, async (req, res) => {
  *       400:
  *         description: Error en los datos enviados
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.post('/', authenticate, validateVaccine, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  const { nombre, fabricante, tipo, dosis_requeridas } = req.body;
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-      .input('nombre', sql.NVarChar, nombre)
-      .input('fabricante', sql.NVarChar, fabricante)
-      .input('tipo', sql.NVarChar, tipo)
-      .input('dosis_requeridas', sql.Int, dosis_requeridas)
-      .execute('sp_CrearVacuna');
-
-    res.status(201).json({ id_vacuna: result.recordset[0].id_vacuna });
-  } catch (err) {
-    res.status(500).json({ error: 'Error al crear vacuna' });
+router.post(
+  '/',
+  [authenticate, checkRole(['director', 'administrador']), validateVaccine],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('nombre', sql.NVarChar, req.body.nombre)
+        .input('fabricante', sql.NVarChar, req.body.fabricante)
+        .input('tipo', sql.NVarChar, req.body.tipo)
+        .input('dosis_requeridas', sql.Int, req.body.dosis_requeridas)
+        .execute('sp_CrearVacuna');
+      res.status(201).json({ id_vacuna: result.recordset[0].id_vacuna });
+    } catch (err) {
+      next(err);
+    }
   }
-});
-
-/**
- * @swagger
- * /api/vaccines/{id}:
- *   get:
- *     summary: Obtener una vacuna por ID
- *     tags: [Vaccines]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID de la vacuna
- *     responses:
- *       200:
- *         description: Vacuna encontrada
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Vaccine'
- *       400:
- *         description: ID inválido
- *       404:
- *         description: Vacuna no encontrada
- *       500:
- *         description: Error del servidor
- */
-router.get('/:id', authenticate, validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-      .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_ObtenerVacuna');
-
-    if (!result.recordset[0]) return res.status(404).json({ error: 'Vacuna no encontrada' });
-    res.json(result.recordset[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Error al obtener vacuna' });
-  }
-});
+);
 
 /**
  * @swagger
@@ -218,7 +210,6 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID de la vacuna
  *     requestBody:
  *       required: true
  *       content:
@@ -226,45 +217,35 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
  *           schema:
  *             $ref: '#/components/schemas/VaccineInput'
  *     responses:
- *       200:
- *         description: Vacuna actualizada
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Vacuna actualizada
+ *       204:
+ *         description: Vacuna actualizada exitosamente
  *       400:
  *         description: Error en los datos enviados
  *       404:
  *         description: Vacuna no encontrada
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.put('/:id', authenticate, validateUUID, validateVaccine, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  const { nombre, fabricante, tipo, dosis_requeridas } = req.body;
-
-  try {
-    const pool = await sql.connect(config);
-    await pool.request()
-      .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
-      .input('nombre', sql.NVarChar, nombre)
-      .input('fabricante', sql.NVarChar, fabricante)
-      .input('tipo', sql.NVarChar, tipo)
-      .input('dosis_requeridas', sql.Int, dosis_requeridas)
-      .execute('sp_ActualizarVacuna');
-
-    res.json({ message: 'Vacuna actualizada' });
-  } catch (err) {
-    if (err.number === 50001 || err.number === 50002) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al actualizar vacuna' });
+router.put(
+  '/:id',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID, validateVaccine],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
+        .input('nombre', sql.NVarChar, req.body.nombre)
+        .input('fabricante', sql.NVarChar, req.body.fabricante)
+        .input('tipo', sql.NVarChar, req.body.tipo)
+        .input('dosis_requeridas', sql.Int, req.body.dosis_requeridas)
+        .execute('sp_ActualizarVacuna');
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -281,40 +262,31 @@ router.put('/:id', authenticate, validateUUID, validateVaccine, async (req, res)
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID de la vacuna
  *     responses:
- *       200:
- *         description: Vacuna eliminada
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Vacuna eliminada
+ *       204:
+ *         description: Vacuna eliminada exitosamente
  *       400:
  *         description: ID inválido
  *       404:
  *         description: Vacuna no encontrada
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.delete('/:id', authenticate, validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  try {
-    const pool = await sql.connect(config);
-    await pool.request()
-      .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_EliminarVacuna');
-
-    res.json({ message: 'Vacuna eliminada' });
-  } catch (err) {
-    if (err.number === 50001) return res.status(404).json({ error: err.message });
-    res.status(500).json({ error: 'Error al eliminar vacuna' });
+router.delete(
+  '/:id',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
+        .execute('sp_EliminarVacuna');
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 module.exports = router;

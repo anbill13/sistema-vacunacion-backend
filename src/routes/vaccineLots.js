@@ -1,14 +1,15 @@
 const express = require('express');
+const { body, param } = require('express-validator');
+const { authenticate, checkRole } = require('../middleware/auth');
+const { poolPromise, sql } = require('../config/db');
+const { logger } = require('../config/db');
+
 const router = express.Router();
-const { body, param, validationResult } = require('express-validator');
-const sql = require('mssql');
-const { authenticate } = require('../middleware/auth');
-const config = require('../config/dbConfig');
 
 /**
  * @swagger
  * tags:
- *   name: VaccineLots
+ *   name: VaccineBatches
  *   description: Gestión de lotes de vacunas
  */
 
@@ -16,14 +17,16 @@ const config = require('../config/dbConfig');
  * @swagger
  * components:
  *   schemas:
- *     VaccineLot:
+ *     VaccineBatch:
  *       type: object
  *       required:
  *         - id_vacuna
  *         - numero_lote
+ *         - cantidad_total
+ *         - cantidad_disponible
  *         - fecha_fabricacion
- *         - fecha_expiracion
- *         - cantidad
+ *         - fecha_vencimiento
+ *         - id_centro
  *       properties:
  *         id_lote:
  *           type: string
@@ -35,88 +38,149 @@ const config = require('../config/dbConfig');
  *           description: ID de la vacuna
  *         numero_lote:
  *           type: string
- *           description: Número del lote
+ *           description: Número de lote
+ *         cantidad_total:
+ *           type: integer
+ *           description: Cantidad total de dosis
+ *         cantidad_disponible:
+ *           type: integer
+ *           description: Cantidad disponible de dosis
  *         fecha_fabricacion:
  *           type: string
  *           format: date
  *           description: Fecha de fabricación
- *         fecha_expiracion:
+ *         fecha_vencimiento:
  *           type: string
  *           format: date
- *           description: Fecha de expiración
- *         cantidad:
- *           type: integer
- *           description: Cantidad de vacunas en el lote
- *       example:
- *         id_lote: "123e4567-e89b-12d3-a456-426614174014"
- *         id_vacuna: "123e4567-e89b-12d3-a456-426614174003"
- *         numero_lote: "LOT12345"
- *         fecha_fabricacion: "2025-01-01"
- *         fecha_expiracion: "2026-01-01"
- *         cantidad: 1000
- *     VaccineLotInput:
+ *           description: Fecha de vencimiento
+ *         id_centro:
+ *           type: string
+ *           format: uuid
+ *           description: ID del centro
+ *         condiciones_almacenamiento:
+ *           type: string
+ *           description: Condiciones de almacenamiento (opcional)
+ *     VaccineBatchInput:
  *       type: object
  *       required:
  *         - id_vacuna
  *         - numero_lote
+ *         - cantidad_total
+ *         - cantidad_disponible
  *         - fecha_fabricacion
- *         - fecha_expiracion
- *         - cantidad
+ *         - fecha_vencimiento
+ *         - id_centro
  *       properties:
  *         id_vacuna:
  *           type: string
  *           format: uuid
  *         numero_lote:
  *           type: string
+ *         cantidad_total:
+ *           type: integer
+ *         cantidad_disponible:
+ *           type: integer
  *         fecha_fabricacion:
  *           type: string
  *           format: date
- *         fecha_expiracion:
+ *         fecha_vencimiento:
  *           type: string
  *           format: date
- *         cantidad:
- *           type: integer
+ *         id_centro:
+ *           type: string
+ *           format: uuid
+ *         condiciones_almacenamiento:
+ *           type: string
+ *           nullable: true
  */
 
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-const validateVaccineLot = [
+const validateVaccineBatch = [
   body('id_vacuna').isUUID().withMessage('ID de vacuna inválido'),
   body('numero_lote').notEmpty().isString().withMessage('Número de lote es requerido'),
+  body('cantidad_total').isInt({ min: 1 }).withMessage('Cantidad total debe ser un número positivo'),
+  body('cantidad_disponible').isInt({ min: 0 }).withMessage('Cantidad disponible debe ser un número no negativo'),
   body('fecha_fabricacion').isDate().withMessage('Fecha de fabricación inválida'),
-  body('fecha_expiracion').isDate().withMessage('Fecha de expiración inválida'),
-  body('cantidad').isInt({ min: 1 }).withMessage('Cantidad debe ser un entero positivo'),
+  body('fecha_vencimiento').isDate().withMessage('Fecha de vencimiento inválida'),
+  body('id_centro').isUUID().withMessage('ID de centro inválido'),
+  body('condiciones_almacenamiento').optional().isString(),
 ];
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
 /**
  * @swagger
  * /api/vaccine-lots:
  *   get:
- *     summary: Obtener todos los lotes de vacunas
- *     tags: [VaccineLots]
+ *     summary: Listar todos los lotes de vacunas
+ *     tags: [VaccineBatches]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de lotes de vacunas
+ *         description: Lista de lotes obtenida exitosamente
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/VaccineLot'
+ *                 $ref: '#/components/schemas/VaccineBatch'
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.get('/', authenticate, async (req, res) => {
+router.get('/', [authenticate, checkRole(['director', 'administrador'])], async (req, res, next) => {
   try {
-    const pool = await sql.connect(config);
-    const result = await pool.request().query(`
-      SELECT id_lote, id_vacuna, numero_lote, fecha_fabricacion, fecha_expiracion, cantidad
-      FROM Lotes_Vacunas
-    `);
-    res.json(result.recordset);
+    const pool = await poolPromise;
+    const result = await pool.request().query('SELECT * FROM Lotes_Vacunas');
+    res.status(200).json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener lotes de vacunas' });
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/vaccine-lots/{id}:
+ *   get:
+ *     summary: Obtener un lote de vacunas por ID
+ *     tags: [VaccineBatches]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Lote obtenido exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VaccineBatch'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Lote no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID], async (req, res, next) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_lote', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT * FROM Lotes_Vacunas WHERE id_lote = @id_lote');
+    if (result.recordset.length === 0) {
+      const error = new Error('Lote no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json(result.recordset[0]);
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -125,7 +189,7 @@ router.get('/', authenticate, async (req, res) => {
  * /api/vaccine-lots:
  *   post:
  *     summary: Crear un nuevo lote de vacunas
- *     tags: [VaccineLots]
+ *     tags: [VaccineBatches]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -133,7 +197,7 @@ router.get('/', authenticate, async (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/VaccineLotInput'
+ *             $ref: '#/components/schemas/VaccineBatchInput'
  *     responses:
  *       201:
  *         description: Lote creado exitosamente
@@ -148,84 +212,38 @@ router.get('/', authenticate, async (req, res) => {
  *       400:
  *         description: Error en los datos enviados
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.post('/', authenticate, validateVaccineLot, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  const { id_vacuna, numero_lote, fecha_fabricacion, fecha_expiracion, cantidad } = req.body;
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-      .input('id_vacuna', sql.UniqueIdentifier, id_vacuna)
-      .input('numero_lote', sql.NVarChar, numero_lote)
-      .input('fecha_fabricacion', sql.Date, fecha_fabricacion)
-      .input('fecha_expiracion', sql.Date, fecha_expiracion)
-      .input('cantidad', sql.Int, cantidad)
-      .execute('sp_CrearLoteVacuna');
-
-    res.status(201).json({ id_lote: result.recordset[0].id_lote });
-  } catch (err) {
-    if (err.number >= 50001 && err.number <= 50003) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al crear lote de vacunas' });
+router.post(
+  '/',
+  [authenticate, checkRole(['director', 'administrador']), validateVaccineBatch],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('id_vacuna', sql.UniqueIdentifier, req.body.id_vacuna)
+        .input('numero_lote', sql.NVarChar, req.body.numero_lote)
+        .input('cantidad_total', sql.Int, req.body.cantidad_total)
+        .input('cantidad_disponible', sql.Int, req.body.cantidad_disponible)
+        .input('fecha_fabricacion', sql.Date, req.body.fecha_fabricacion)
+        .input('fecha_vencimiento', sql.Date, req.body.fecha_vencimiento)
+        .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+        .input('condiciones_almacenamiento', sql.NVarChar, req.body.condiciones_almacenamiento)
+        .execute('sp_CrearLoteVacuna');
+      res.status(201).json({ id_lote: result.recordset[0].id_lote });
+    } catch (err) {
+      next(err);
+    }
   }
-});
-
-/**
- * @swagger
- * /api/vaccine-lots/{id}:
- *   get:
- *     summary: Obtener un lote de vacunas por ID
- *     tags: [VaccineLots]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID del lote de vacunas
- *     responses:
- *       200:
- *         description: Lote encontrado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/VaccineLot'
- *       400:
- *         description: ID inválido
- *       404:
- *         description: Lote no encontrado
- *       500:
- *         description: Error del servidor
- */
-router.get('/:id', authenticate, validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-      .input('id_lote', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_ObtenerLoteVacuna');
-
-    if (!result.recordset[0]) return res.status(404).json({ error: 'Lote no encontrado' });
-    res.json(result.recordset[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Error al obtener lote de vacunas' });
-  }
-});
+);
 
 /**
  * @swagger
  * /api/vaccine-lots/{id}:
  *   put:
  *     summary: Actualizar un lote de vacunas
- *     tags: [VaccineLots]
+ *     tags: [VaccineBatches]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -235,61 +253,53 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID del lote de vacunas
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/VaccineLotInput'
+ *             $ref: '#/components/schemas/VaccineBatchInput'
  *     responses:
- *       200:
- *         description: Lote actualizado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Lote actualizado
+ *       204:
+ *         description: Lote actualizado exitosamente
  *       400:
  *         description: Error en los datos enviados
  *       404:
  *         description: Lote no encontrado
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.put('/:id', authenticate, validateUUID, validateVaccineLot, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  const { id_vacuna, numero_lote, fecha_fabricacion, fecha_expiracion, cantidad } = req.body;
-
-  try {
-    const pool = await sql.connect(config);
-    await pool.request()
-      .input('id_lote', sql.UniqueIdentifier, req.params.id)
-      .input('id_vacuna', sql.UniqueIdentifier, id_vacuna)
-      .input('numero_lote', sql.NVarChar, numero_lote)
-      .input('fecha_fabricacion', sql.Date, fecha_fabricacion)
-      .input('fecha_expiracion', sql.Date, fecha_expiracion)
-      .input('cantidad', sql.Int, cantidad)
-      .execute('sp_ActualizarLoteVacuna');
-
-    res.json({ message: 'Lote actualizado' });
-  } catch (err) {
-    if (err.number >= 50001 && err.number <= 50004) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al actualizar lote de vacunas' });
+router.put(
+  '/:id',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID, validateVaccineBatch],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_lote', sql.UniqueIdentifier, req.params.id)
+        .input('id_vacuna', sql.UniqueIdentifier, req.body.id_vacuna)
+        .input('numero_lote', sql.NVarChar, req.body.numero_lote)
+        .input('cantidad_total', sql.Int, req.body.cantidad_total)
+        .input('cantidad_disponible', sql.Int, req.body.cantidad_disponible)
+        .input('fecha_fabricacion', sql.Date, req.body.fecha_fabricacion)
+        .input('fecha_vencimiento', sql.Date, req.body.fecha_vencimiento)
+        .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+        .input('condiciones_almacenamiento', sql.NVarChar, req.body.condiciones_almacenamiento)
+        .execute('sp_ActualizarLoteVacuna');
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 /**
  * @swagger
  * /api/vaccine-lots/{id}:
  *   delete:
  *     summary: Eliminar un lote de vacunas
- *     tags: [VaccineLots]
+ *     tags: [VaccineBatches]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -299,40 +309,31 @@ router.put('/:id', authenticate, validateUUID, validateVaccineLot, async (req, r
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID del lote de vacunas
  *     responses:
- *       200:
- *         description: Lote eliminado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Lote eliminado
+ *       204:
+ *         description: Lote eliminado exitosamente
  *       400:
  *         description: ID inválido
  *       404:
  *         description: Lote no encontrado
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.delete('/:id', authenticate, validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  try {
-    const pool = await sql.connect(config);
-    await pool.request()
-      .input('id_lote', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_EliminarLoteVacuna');
-
-    res.json({ message: 'Lote eliminado' });
-  } catch (err) {
-    if (err.number === 50001) return res.status(404).json({ error: err.message });
-    res.status(500).json({ error: 'Error al eliminar lote de vacunas' });
+router.delete(
+  '/:id',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_lote', sql.UniqueIdentifier, req.params.id)
+        .query('DELETE FROM Lotes_Vacunas WHERE id_lote = @id_lote'); // Nota: No hay stored procedure, usar DELETE directo
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 module.exports = router;

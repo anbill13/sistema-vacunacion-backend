@@ -1,9 +1,10 @@
 const express = require('express');
-const router = express.Router();
-const { body, param, validationResult } = require('express-validator');
-const sql = require('mssql');
+const { body, param } = require('express-validator');
 const { authenticate, checkRole } = require('../middleware/auth');
-const config = require('../config/dbConfig');
+const { poolPromise, sql } = require('../config/db');
+const { logger } = require('../config/db');
+
+const router = express.Router();
 
 /**
  * @swagger
@@ -20,70 +21,65 @@ const config = require('../config/dbConfig');
  *       type: object
  *       required:
  *         - id_vacuna
- *         - edad_meses
- *         - dosis_numero
+ *         - orden_dosis
+ *         - edad_recomendada
  *       properties:
- *         id_calendario:
+ *         id_esquema:
  *           type: string
  *           format: uuid
- *           description: Identificador único del esquema de vacunación
+ *           description: Identificador único del esquema
  *         id_vacuna:
  *           type: string
  *           format: uuid
  *           description: ID de la vacuna
- *         edad_meses:
+ *         orden_dosis:
  *           type: integer
- *           description: Edad en meses para la aplicación de la dosis
- *         dosis_numero:
- *           type: integer
- *           description: Número de la dosis
+ *           description: Orden de la dosis
+ *         edad_recomendada:
+ *           type: string
+ *           description: Edad recomendada
  *         descripcion:
  *           type: string
  *           description: Descripción del esquema (opcional)
- *       example:
- *         id_calendario: "123e4567-e89b-12d3-a456-426614174015"
- *         id_vacuna: "123e4567-e89b-12d3-a456-426614174003"
- *         edad_meses: 2
- *         dosis_numero: 1
- *         descripcion: "Primera dosis de BCG"
  *     VaccinationScheduleInput:
  *       type: object
  *       required:
  *         - id_vacuna
- *         - edad_meses
- *         - dosis_numero
+ *         - orden_dosis
+ *         - edad_recomendada
  *       properties:
  *         id_vacuna:
  *           type: string
  *           format: uuid
- *         edad_meses:
+ *         orden_dosis:
  *           type: integer
- *         dosis_numero:
- *           type: integer
+ *         edad_recomendada:
+ *           type: string
  *         descripcion:
  *           type: string
  *           nullable: true
  */
 
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
 const validateVaccinationSchedule = [
   body('id_vacuna').isUUID().withMessage('ID de vacuna inválido'),
-  body('edad_meses').isInt({ min: 0 }).withMessage('Edad en meses debe ser un entero no negativo'),
-  body('dosis_numero').isInt({ min: 1 }).withMessage('Número de dosis debe ser un entero positivo'),
+  body('orden_dosis').isInt({ min: 1 }).withMessage('Orden de dosis debe ser un número positivo'),
+  body('edad_recomendada').notEmpty().isString().withMessage('Edad recomendada es requerida'),
   body('descripcion').optional().isString(),
 ];
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
 /**
  * @swagger
  * /api/vaccination-schedules:
  *   get:
- *     summary: Obtener todos los esquemas de vacunación
+ *     summary: Listar todos los esquemas de vacunación
  *     tags: [VaccinationSchedules]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de esquemas de vacunación
+ *         description: Lista de esquemas obtenida exitosamente
  *         content:
  *           application/json:
  *             schema:
@@ -91,18 +87,62 @@ const validateVaccinationSchedule = [
  *               items:
  *                 $ref: '#/components/schemas/VaccinationSchedule'
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.get('/', authenticate, async (req, res) => {
+router.get('/', [authenticate, checkRole(['director', 'administrador'])], async (req, res, next) => {
   try {
-    const pool = await sql.connect(config);
-    const result = await pool.request().query(`
-      SELECT id_calendario, id_vacuna, edad_meses, dosis_numero, descripcion
-      FROM Esquema_Vacunacion
-    `);
-    res.json(result.recordset);
+    const pool = await poolPromise;
+    const result = await pool.request().query('SELECT * FROM Esquema_Vacunacion');
+    res.status(200).json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener esquemas de vacunación' });
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/vaccination-schedules/{id}:
+ *   get:
+ *     summary: Obtener un esquema de vacunación por ID
+ *     tags: [VaccinationSchedules]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Esquema obtenido exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VaccinationSchedule'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Esquema no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID], async (req, res, next) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_esquema', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT * FROM Esquema_Vacunacion WHERE id_esquema = @id_esquema');
+    if (result.recordset.length === 0) {
+      const error = new Error('Esquema no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json(result.recordset[0]);
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -128,84 +168,33 @@ router.get('/', authenticate, async (req, res) => {
  *             schema:
  *               type: object
  *               properties:
- *                 id_calendario:
+ *                 id_esquema:
  *                   type: string
  *                   format: uuid
  *       400:
  *         description: Error en los datos enviados
- *       403:
- *         description: No autorizado (requiere rol de administrador)
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.post('/', authenticate, checkRole(['administrador']), validateVaccinationSchedule, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  const { id_vacuna, edad_meses, dosis_numero, descripcion } = req.body;
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-      .input('id_vacuna', sql.UniqueIdentifier, id_vacuna)
-      .input('edad_meses', sql.Int, edad_meses)
-      .input('dosis_numero', sql.Int, dosis_numero)
-      .input('descripcion', sql.NVarChar, descripcion)
-      .execute('sp_CrearEsquemaVacunacion');
-
-    res.status(201).json({ id_calendario: result.recordset[0].id_calendario });
-  } catch (err) {
-    if (err.number >= 50001 && err.number <= 50003) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al crear esquema de vacunación' });
+router.post(
+  '/',
+  [authenticate, checkRole(['director', 'administrador']), validateVaccinationSchedule],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('id_vacuna', sql.UniqueIdentifier, req.body.id_vacuna)
+        .input('orden_dosis', sql.Int, req.body.orden_dosis)
+        .input('edad_recomendada', sql.NVarChar, req.body.edad_recomendada)
+        .input('descripcion', sql.NVarChar, req.body.descripcion)
+        .execute('sp_CrearEsquemaVacunacion');
+      res.status(201).json({ id_esquema: result.recordset[0].id_esquema });
+    } catch (err) {
+      next(err);
+    }
   }
-});
-
-/**
- * @swagger
- * /api/vaccination-schedules/{id}:
- *   get:
- *     summary: Obtener un esquema de vacunación por ID
- *     tags: [VaccinationSchedules]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID del esquema de vacunación
- *     responses:
- *       200:
- *         description: Esquema encontrado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/VaccinationSchedule'
- *       400:
- *         description: ID inválido
- *       404:
- *         description: Esquema no encontrado
- *       500:
- *         description: Error del servidor
- */
-router.get('/:id', authenticate, validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-      .input('id_calendario', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_ObtenerEsquemaVacunacion');
-
-    if (!result.recordset[0]) return res.status(404).json({ error: 'Esquema no encontrado' });
-    res.json(result.recordset[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Error al obtener esquema de vacunación' });
-  }
-});
+);
 
 /**
  * @swagger
@@ -222,7 +211,6 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID del esquema de vacunación
  *     requestBody:
  *       required: true
  *       content:
@@ -230,47 +218,35 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
  *           schema:
  *             $ref: '#/components/schemas/VaccinationScheduleInput'
  *     responses:
- *       200:
- *         description: Esquema actualizado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Esquema actualizado
+ *       204:
+ *         description: Esquema actualizado exitosamente
  *       400:
  *         description: Error en los datos enviados
- *       403:
- *         description: No autorizado (requiere rol de administrador)
  *       404:
  *         description: Esquema no encontrado
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.put('/:id', authenticate, checkRole(['administrador']), validateUUID, validateVaccinationSchedule, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  const { id_vacuna, edad_meses, dosis_numero, descripcion } = req.body;
-
-  try {
-    const pool = await sql.connect(config);
-    await pool.request()
-      .input('id_calendario', sql.UniqueIdentifier, req.params.id)
-      .input('id_vacuna', sql.UniqueIdentifier, id_vacuna)
-      .input('edad_meses', sql.Int, edad_meses)
-      .input('dosis_numero', sql.Int, dosis_numero)
-      .input('descripcion', sql.NVarChar, descripcion)
-      .execute('sp_ActualizarEsquemaVacunacion');
-
-    res.json({ message: 'Esquema actualizado' });
-  } catch (err) {
-    if (err.number >= 50001 && err.number <= 50004) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al actualizar esquema de vacunación' });
+router.put(
+  '/:id',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID, validateVaccinationSchedule],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_esquema', sql.UniqueIdentifier, req.params.id)
+        .input('id_vacuna', sql.UniqueIdentifier, req.body.id_vacuna)
+        .input('orden_dosis', sql.Int, req.body.orden_dosis)
+        .input('edad_recomendada', sql.NVarChar, req.body.edad_recomendada)
+        .input('descripcion', sql.NVarChar, req.body.descripcion)
+        .execute('sp_ActualizarEsquemaVacunacion');
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -287,42 +263,31 @@ router.put('/:id', authenticate, checkRole(['administrador']), validateUUID, val
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID del esquema de vacunación
  *     responses:
- *       200:
- *         description: Esquema eliminado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Esquema eliminado
+ *       204:
+ *         description: Esquema eliminado exitosamente
  *       400:
  *         description: ID inválido
- *       403:
- *         description: No autorizado (requiere rol de administrador)
  *       404:
  *         description: Esquema no encontrado
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.delete('/:id', authenticate, checkRole(['administrador']), validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  try {
-    const pool = await sql.connect(config);
-    await pool.request()
-      .input('id_calendario', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_EliminarEsquemaVacunacion');
-
-    res.json({ message: 'Esquema eliminado' });
-  } catch (err) {
-    if (err.number === 50001) return res.status(404).json({ error: err.message });
-    res.status(500).json({ error: 'Error al eliminar esquema de vacunación' });
+router.delete(
+  '/:id',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_esquema', sql.UniqueIdentifier, req.params.id)
+        .query('DELETE FROM Esquema_Vacunacion WHERE id_esquema = @id_esquema'); // Nota: No hay stored procedure, usar DELETE directo
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 module.exports = router;

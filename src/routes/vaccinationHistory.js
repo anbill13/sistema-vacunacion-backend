@@ -1,15 +1,16 @@
 const express = require('express');
+const { body, param, query } = require('express-validator');
+const { authenticate, checkRole } = require('../middleware/auth');
+const { poolPromise, sql } = require('../config/db');
+const { logger } = require('../config/db');
+
 const router = express.Router();
-const { body, param, validationResult } = require('express-validator');
-const sql = require('mssql');
-const { authenticate } = require('../middleware/auth');
-const config = require('../config/dbConfig');
 
 /**
  * @swagger
  * tags:
- *   name: VaccinationHistory
- *   description: Gestión del historial de vacunación
+ *   name: Vaccinations
+ *   description: Gestión de vacunaciones
  */
 
 /**
@@ -20,12 +21,10 @@ const config = require('../config/dbConfig');
  *       type: object
  *       required:
  *         - id_niño
- *         - id_vacuna
- *         - id_centro
  *         - id_lote
- *         - fecha_vacunacion
- *         - dosis_numero
  *         - id_personal
+ *         - fecha_vacunacion
+ *         - dosis_aplicada
  *       properties:
  *         id_historial:
  *           type: string
@@ -35,93 +34,99 @@ const config = require('../config/dbConfig');
  *           type: string
  *           format: uuid
  *           description: ID del niño
- *         id_vacuna:
- *           type: string
- *           format: uuid
- *           description: ID de la vacuna
- *         id_centro:
- *           type: string
- *           format: uuid
- *           description: ID del centro de vacunación
  *         id_lote:
  *           type: string
  *           format: uuid
- *           description: ID del lote de vacunas
- *         fecha_vacunacion:
- *           type: string
- *           format: date
- *           description: Fecha de vacunación
- *         dosis_numero:
- *           type: integer
- *           description: Número de la dosis
+ *           description: ID del lote de vacuna
  *         id_personal:
  *           type: string
  *           format: uuid
- *           description: ID del personal que aplicó la vacuna
- *       example:
- *         id_historial: "123e4567-e89b-12d3-a456-426614174009"
- *         id_niño: "123e4567-e89b-12d3-a456-426614174000"
- *         id_vacuna: "123e4567-e89b-12d3-a456-426614174003"
- *         id_centro: "123e4567-e89b-12d3-a456-426614174002"
- *         id_lote: "123e4567-e89b-12d3-a456-426614174014"
- *         fecha_vacunacion: "2025-06-20"
- *         dosis_numero: 1
- *         id_personal: "123e4567-e89b-12d3-a456-426614174006"
+ *           description: ID del personal de salud
+ *         id_centro:
+ *           type: string
+ *           format: uuid
+ *           description: ID del centro de vacunación (opcional)
+ *         fecha_vacunacion:
+ *           type: string
+ *           format: date-time
+ *           description: Fecha y hora de la vacunación
+ *         dosis_aplicada:
+ *           type: integer
+ *           description: Número de dosis aplicada
+ *         sitio_aplicacion:
+ *           type: string
+ *           description: Sitio de aplicación (opcional)
+ *         observaciones:
+ *           type: string
+ *           description: Observaciones (opcional)
+ *         nombre_vacuna:
+ *           type: string
+ *           description: Nombre de la vacuna
+ *         nombre_centro:
+ *           type: string
+ *           description: Nombre del centro
+ *         personal_responsable:
+ *           type: string
+ *           description: Nombre del personal responsable
  *     VaccinationHistoryInput:
  *       type: object
  *       required:
  *         - id_niño
- *         - id_vacuna
- *         - id_centro
  *         - id_lote
- *         - fecha_vacunacion
- *         - dosis_numero
  *         - id_personal
+ *         - fecha_vacunacion
+ *         - dosis_aplicada
  *       properties:
  *         id_niño:
- *           type: string
- *           format: uuid
- *         id_vacuna:
- *           type: string
- *           format: uuid
- *         id_centro:
  *           type: string
  *           format: uuid
  *         id_lote:
  *           type: string
  *           format: uuid
- *         fecha_vacunacion:
- *           type: string
- *           format: date
- *         dosis_numero:
- *           type: integer
  *         id_personal:
  *           type: string
  *           format: uuid
+ *         id_centro:
+ *           type: string
+ *           format: uuid
+ *           nullable: true
+ *         fecha_vacunacion:
+ *           type: string
+ *           format: date-time
+ *         dosis_aplicada:
+ *           type: integer
+ *         sitio_aplicacion:
+ *           type: string
+ *           nullable: true
+ *         observaciones:
+ *           type: string
+ *           nullable: true
  */
 
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-const validateVaccinationHistory = [
+const validateVaccination = [
   body('id_niño').isUUID().withMessage('ID de niño inválido'),
-  body('id_vacuna').isUUID().withMessage('ID de vacuna inválido'),
-  body('id_centro').isUUID().withMessage('ID de centro inválido'),
   body('id_lote').isUUID().withMessage('ID de lote inválido'),
-  body('fecha_vacunacion').isDate().withMessage('Fecha de vacunación inválida'),
-  body('dosis_numero').isInt({ min: 1 }).withMessage('Número de dosis debe ser un entero positivo'),
   body('id_personal').isUUID().withMessage('ID de personal inválido'),
+  body('id_centro').optional().isUUID().withMessage('ID de centro inválido'),
+  body('fecha_vacunacion').isISO8601().withMessage('Fecha de vacunación inválida'),
+  body('dosis_aplicada').isInt({ min: 1 }).withMessage('Dosis aplicada debe ser un número positivo'),
+  body('sitio_aplicacion').optional().isString(),
+  body('observaciones').optional().isString(),
 ];
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
 /**
  * @swagger
  * /api/vaccination-history:
  *   get:
- *     summary: Obtener todo el historial de vacunación
- *     tags: [VaccinationHistory]
+ *     summary: Listar todos los historiales de vacunación
+ *     tags: [Vaccinations]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de historial de vacunación
+ *         description: Lista de historiales obtenida exitosamente
  *         content:
  *           application/json:
  *             schema:
@@ -129,18 +134,62 @@ const validateVaccinationHistory = [
  *               items:
  *                 $ref: '#/components/schemas/VaccinationHistory'
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.get('/', authenticate, async (req, res) => {
+router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (req, res, next) => {
   try {
-    const pool = await sql.connect(config);
-    const result = await pool.request().query(`
-      SELECT id_historial, id_niño, id_vacuna, id_centro, id_lote, fecha_vacunacion, dosis_numero, id_personal
-      FROM Historial_Vacunacion
-    `);
-    res.json(result.recordset);
+    const pool = await poolPromise;
+    const result = await pool.request().query('SELECT * FROM Historial_Vacunacion');
+    res.status(200).json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener historial de vacunación' });
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/vaccination-history/{id}:
+ *   get:
+ *     summary: Obtener un historial de vacunación por ID
+ *     tags: [Vaccinations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Historial obtenido exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VaccinationHistory'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Historial no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID], async (req, res, next) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_historial', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT * FROM Historial_Vacunacion WHERE id_historial = @id_historial');
+    if (result.recordset.length === 0) {
+      const error = new Error('Historial no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json(result.recordset[0]);
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -148,8 +197,8 @@ router.get('/', authenticate, async (req, res) => {
  * @swagger
  * /api/vaccination-history:
  *   post:
- *     summary: Crear un nuevo registro de vacunación
- *     tags: [VaccinationHistory]
+ *     summary: Registrar una nueva vacunación
+ *     tags: [Vaccinations]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -160,7 +209,7 @@ router.get('/', authenticate, async (req, res) => {
  *             $ref: '#/components/schemas/VaccinationHistoryInput'
  *     responses:
  *       201:
- *         description: Registro creado exitosamente
+ *         description: Vacunación registrada exitosamente
  *         content:
  *           application/json:
  *             schema:
@@ -172,86 +221,38 @@ router.get('/', authenticate, async (req, res) => {
  *       400:
  *         description: Error en los datos enviados
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.post('/', authenticate, validateVaccinationHistory, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  const { id_niño, id_vacuna, id_centro, id_lote, fecha_vacunacion, dosis_numero, id_personal } = req.body;
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-      .input('id_niño', sql.UniqueIdentifier, id_niño)
-      .input('id_vacuna', sql.UniqueIdentifier, id_vacuna)
-      .input('id_centro', sql.UniqueIdentifier, id_centro)
-      .input('id_lote', sql.UniqueIdentifier, id_lote)
-      .input('fecha_vacunacion', sql.Date, fecha_vacunacion)
-      .input('dosis_numero', sql.Int, dosis_numero)
-      .input('id_personal', sql.UniqueIdentifier, id_personal)
-      .execute('sp_CrearHistorialVacunacion');
-
-    res.status(201).json({ id_historial: result.recordset[0].id_historial });
-  } catch (err) {
-    if (err.number >= 50001 && err.number <= 50005) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al crear historial de vacunación' });
+router.post(
+  '/',
+  [authenticate, checkRole(['doctor', 'administrador']), validateVaccination],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
+        .input('id_lote', sql.UniqueIdentifier, req.body.id_lote)
+        .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
+        .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+        .input('fecha_vacunacion', sql.DateTime2, req.body.fecha_vacunacion)
+        .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
+        .input('sitio_aplicacion', sql.NVarChar, req.body.sitio_aplicacion)
+        .input('observaciones', sql.NVarChar, req.body.observaciones)
+        .execute('sp_RegistrarVacunacion');
+      res.status(201).json({ id_historial: result.recordset[0].id_historial });
+    } catch (err) {
+      next(err);
+    }
   }
-});
-
-/**
- * @swagger
- * /api/vaccination-history/{id}:
- *   get:
- *     summary: Obtener un registro de vacunación por ID
- *     tags: [VaccinationHistory]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID del historial de vacunación
- *     responses:
- *       200:
- *         description: Registro encontrado
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/VaccinationHistory'
- *       400:
- *         description: ID inválido
- *       404:
- *         description: Registro no encontrado
- *       500:
- *         description: Error del servidor
- */
-router.get('/:id', authenticate, validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-      .input('id_historial', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_ObtenerHistorialVacunacion');
-
-    if (!result.recordset[0]) return res.status(404).json({ error: 'Historial no encontrado' });
-    res.json(result.recordset[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Error al obtener historial de vacunación' });
-  }
-});
+);
 
 /**
  * @swagger
  * /api/vaccination-history/{id}:
  *   put:
- *     summary: Actualizar un registro de vacunación
- *     tags: [VaccinationHistory]
+ *     summary: Actualizar un historial de vacunación
+ *     tags: [Vaccinations]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -261,7 +262,6 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID del historial de vacunación
  *     requestBody:
  *       required: true
  *       content:
@@ -269,55 +269,46 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
  *           schema:
  *             $ref: '#/components/schemas/VaccinationHistoryInput'
  *     responses:
- *       200:
- *         description: Registro actualizado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Historial actualizado
+ *       204:
+ *         description: Historial actualizado exitosamente
  *       400:
  *         description: Error en los datos enviados
  *       404:
- *         description: Registro no encontrado
+ *         description: Historial no encontrado
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.put('/:id', authenticate, validateUUID, validateVaccinationHistory, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  const { id_niño, id_vacuna, id_centro, id_lote, fecha_vacunacion, dosis_numero, id_personal } = req.body;
-
-  try {
-    const pool = await sql.connect(config);
-    await pool.request()
-      .input('id_historial', sql.UniqueIdentifier, req.params.id)
-      .input('id_niño', sql.UniqueIdentifier, id_niño)
-      .input('id_vacuna', sql.UniqueIdentifier, id_vacuna)
-      .input('id_centro', sql.UniqueIdentifier, id_centro)
-      .input('id_lote', sql.UniqueIdentifier, id_lote)
-      .input('fecha_vacunacion', sql.Date, fecha_vacunacion)
-      .input('dosis_numero', sql.Int, dosis_numero)
-      .input('id_personal', sql.UniqueIdentifier, id_personal)
-      .execute('sp_ActualizarHistorialVacunacion');
-
-    res.json({ message: 'Historial actualizado' });
-  } catch (err) {
-    if (err.number >= 50001 && err.number <= 50006) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al actualizar historial de vacunación' });
+router.put(
+  '/:id',
+  [authenticate, checkRole(['doctor', 'administrador']), validateUUID, validateVaccination],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_historial', sql.UniqueIdentifier, req.params.id)
+        .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
+        .input('id_lote', sql.UniqueIdentifier, req.body.id_lote)
+        .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
+        .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+        .input('fecha_vacunacion', sql.DateTime2, req.body.fecha_vacunacion)
+        .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
+        .input('sitio_aplicacion', sql.NVarChar, req.body.sitio_aplicacion)
+        .input('observaciones', sql.NVarChar, req.body.observaciones)
+        .query('UPDATE Historial_Vacunacion SET id_niño = @id_niño, id_lote = @id_lote, id_personal = @id_personal, id_centro = @id_centro, fecha_vacunacion = @fecha_vacunacion, dosis_aplicada = @dosis_aplicada, sitio_aplicacion = @sitio_aplicacion, observaciones = @observaciones WHERE id_historial = @id_historial'); // Nota: No hay stored procedure, usar UPDATE directo
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 /**
  * @swagger
  * /api/vaccination-history/{id}:
  *   delete:
- *     summary: Eliminar un registro de vacunación
- *     tags: [VaccinationHistory]
+ *     summary: Eliminar un historial de vacunación
+ *     tags: [Vaccinations]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -327,39 +318,79 @@ router.put('/:id', authenticate, validateUUID, validateVaccinationHistory, async
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID del historial de vacunación
  *     responses:
- *       200:
- *         description: Registro eliminado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Historial eliminado
+ *       204:
+ *         description: Historial eliminado exitosamente
  *       400:
  *         description: ID inválido
  *       404:
- *         description: Registro no encontrado
+ *         description: Historial no encontrado
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.delete('/:id', authenticate, validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+router.delete(
+  '/:id',
+  [authenticate, checkRole(['doctor', 'administrador']), validateUUID],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_historial', sql.UniqueIdentifier, req.params.id)
+        .query('DELETE FROM Historial_Vacunacion WHERE id_historial = @id_historial'); // Nota: No hay stored procedure, usar DELETE directo
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
+/**
+ * @swagger
+ * /api/vaccination-history/{id}:
+ *   get:
+ *     summary: Obtener el historial de vacunación por ID de niño
+ *     tags: [Vaccinations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Historial obtenido exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/VaccinationHistory'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Historial no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID], async (req, res, next) => {
   try {
-    const pool = await sql.connect(config);
-    await pool.request()
-      .input('id_historial', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_EliminarHistorialVacunacion');
-
-    res.json({ message: 'Historial eliminado' });
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_niño', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_ObtenerHistorialVacunacion');
+    if (result.recordset.length === 0) {
+      const error = new Error('Historial no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json(result.recordset);
   } catch (err) {
-    if (err.number === 50001) return res.status(404).json({ error: err.message });
-    res.status(500).json({ error: 'Error al eliminar historial de vacunación' });
+    next(err);
   }
 });
 

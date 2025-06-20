@@ -1,15 +1,16 @@
 const express = require('express');
-const router = express.Router();
-const { param, validationResult } = require('express-validator');
-const sql = require('mssql');
+const { body, param } = require('express-validator');
 const { authenticate, checkRole } = require('../middleware/auth');
-const config = require('../config/dbConfig');
+const { poolPromise, sql } = require('../config/db');
+const { logger } = require('../config/db');
+
+const router = express.Router();
 
 /**
  * @swagger
  * tags:
  *   name: Audits
- *   description: Gestión de registros de auditoría
+ *   description: Registro de auditorías
  */
 
 /**
@@ -27,10 +28,10 @@ const config = require('../config/dbConfig');
  *         id_auditoria:
  *           type: string
  *           format: uuid
- *           description: Identificador único del registro de auditoría
+ *           description: Identificador único de la auditoría
  *         tabla_afectada:
  *           type: string
- *           description: Nombre de la tabla afectada
+ *           description: Tabla afectada
  *         id_registro:
  *           type: string
  *           format: uuid
@@ -41,22 +42,53 @@ const config = require('../config/dbConfig');
  *           description: ID del usuario que realizó la acción
  *         accion:
  *           type: string
- *           description: Acción realizada (inserción, actualización, eliminación)
- *         fecha_accion:
- *           type: string
- *           format: date-time
- *           description: Fecha y hora de la acción
+ *           enum: [INSERT, UPDATE, DELETE, SELECT]
+ *           description: Acción realizada
  *         detalles:
  *           type: string
- *           description: Detalles adicionales de la acción (opcional)
- *       example:
- *         id_auditoria: "123e4567-e89b-12d3-a456-426614174012"
- *         tabla_afectada: "Niños"
- *         id_registro: "123e4567-e89b-12d3-a456-426614174000"
- *         id_usuario: "123e4567-e89b-12d3-a456-426614174007"
- *         accion: "INSERT"
- *         fecha_accion: "2025-06-20T10:00:00Z"
- *         detalles: "Creado nuevo niño"
+ *           description: Detalles de la acción (opcional)
+ *         ip_origen:
+ *           type: string
+ *           description: IP de origen (opcional)
+ *         fecha_registro:
+ *           type: string
+ *           format: date-time
+ *           description: Fecha y hora del registro
+ *     AuditInput:
+ *       type: object
+ *       required:
+ *         - tabla_afectada
+ *         - id_registro
+ *         - id_usuario
+ *         - accion
+ *       properties:
+ *         tabla_afectada:
+ *           type: string
+ *         id_registro:
+ *           type: string
+ *           format: uuid
+ *         id_usuario:
+ *           type: string
+ *           format: uuid
+ *         accion:
+ *           type: string
+ *           enum: [INSERT, UPDATE, DELETE, SELECT]
+ *         detalles:
+ *           type: string
+ *           nullable: true
+ *         ip_origen:
+ *           type: string
+ *           nullable: true
+ */
+
+const validateAudit = [
+  body('tabla_afectada').notEmpty().isString().withMessage('Tabla afectada es requerida'),
+  body('id_registro').isUUID().withMessage('ID de registro inválido'),
+  body('id_usuario').isUUID().withMessage('ID de usuario inválido'),
+  body('accion').isIn(['INSERT', 'UPDATE', 'DELETE', 'SELECT']).withMessage('Acción inválida'),
+  body('detalles').optional().isString(),
+  body('ip_origen').optional().isIP().withMessage('IP de origen inválida'),
+];
 
 const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
@@ -64,34 +96,29 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  * @swagger
  * /api/audits:
  *   get:
- *     summary: Obtener todos los registros de auditoría
+ *     summary: Listar todas las auditorías
  *     tags: [Audits]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de registros de auditoría
+ *         description: Lista de auditorías obtenida exitosamente
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Audit'
- *       403:
- *         description: No autorizado (requiere rol de administrador)
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.get('/', authenticate, checkRole(['administrador']), async (req, res) => {
+router.get('/', [authenticate, checkRole(['director', 'administrador'])], async (req, res, next) => {
   try {
-    const pool = await sql.connect(config);
-    const result = await pool.request().query(`
-      SELECT id_auditoria, tabla_afectada, id_registro, id_usuario, accion, fecha_accion, detalles
-      FROM Auditoria
-    `);
-    res.json(result.recordset);
+    const pool = await poolPromise;
+    const result = await pool.request().query('SELECT * FROM Auditoria');
+    res.status(200).json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener registros de auditoría' });
+    next(err);
   }
 });
 
@@ -99,7 +126,7 @@ router.get('/', authenticate, checkRole(['administrador']), async (req, res) => 
  * @swagger
  * /api/audits/{id}:
  *   get:
- *     summary: Obtener un registro de auditoría por ID
+ *     summary: Obtener una auditoría por ID
  *     tags: [Audits]
  *     security:
  *       - bearerAuth: []
@@ -110,38 +137,184 @@ router.get('/', authenticate, checkRole(['administrador']), async (req, res) => 
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID del registro de auditoría
  *     responses:
  *       200:
- *         description: Registro de auditoría encontrado
+ *         description: Auditoría obtenida exitosamente
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Audit'
  *       400:
  *         description: ID inválido
- *       403:
- *         description: No autorizado (requiere rol de administrador)
  *       404:
- *         description: Registro de auditoría no encontrado
+ *         description: Auditoría no encontrada
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.get('/:id', authenticate, checkRole(['administrador']), validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
+router.get('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID], async (req, res, next) => {
   try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
       .input('id_auditoria', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_ObtenerAuditoria');
-
-    if (!result.recordset[0]) return res.status(404).json({ error: 'Registro de auditoría no encontrado' });
-    res.json(result.recordset[0]);
+      .query('SELECT * FROM Auditoria WHERE id_auditoria = @id_auditoria');
+    if (result.recordset.length === 0) {
+      const error = new Error('Auditoría no encontrada');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json(result.recordset[0]);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener registro de auditoría' });
+    next(err);
   }
 });
+
+/**
+ * @swagger
+ * /api/audits:
+ *   post:
+ *     summary: Registrar una entrada de auditoría
+ *     tags: [Audits]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AuditInput'
+ *     responses:
+ *       201:
+ *         description: Auditoría registrada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id_auditoria:
+ *                   type: string
+ *                   format: uuid
+ *       400:
+ *         description: Error en los datos enviados
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.post(
+  '/',
+  [authenticate, checkRole(['director', 'administrador']), validateAudit],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('tabla_afectada', sql.NVarChar, req.body.tabla_afectada)
+        .input('id_registro', sql.UniqueIdentifier, req.body.id_registro)
+        .input('id_usuario', sql.UniqueIdentifier, req.body.id_usuario)
+        .input('accion', sql.NVarChar, req.body.accion)
+        .input('detalles', sql.NVarChar, req.body.detalles)
+        .input('ip_origen', sql.NVarChar, req.body.ip_origen)
+        .execute('sp_RegistrarAuditoria');
+      res.status(201).json({ id_auditoria: result.recordset[0].id_auditoria });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /api/audits/{id}:
+ *   put:
+ *     summary: Actualizar una entrada de auditoría
+ *     tags: [Audits]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AuditInput'
+ *     responses:
+ *       204:
+ *         description: Auditoría actualizada exitosamente
+ *       400:
+ *         description: Error en los datos enviados
+ *       404:
+ *         description: Auditoría no encontrada
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.put(
+  '/:id',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID, validateAudit],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_auditoria', sql.UniqueIdentifier, req.params.id)
+        .input('tabla_afectada', sql.NVarChar, req.body.tabla_afectada)
+        .input('id_registro', sql.UniqueIdentifier, req.body.id_registro)
+        .input('id_usuario', sql.UniqueIdentifier, req.body.id_usuario)
+        .input('accion', sql.NVarChar, req.body.accion)
+        .input('detalles', sql.NVarChar, req.body.detalles)
+        .input('ip_origen', sql.NVarChar, req.body.ip_origen)
+        .query('UPDATE Auditoria SET tabla_afectada = @tabla_afectada, id_registro = @id_registro, id_usuario = @id_usuario, accion = @accion, detalles = @detalles, ip_origen = @ip_origen WHERE id_auditoria = @id_auditoria'); // Nota: No hay stored procedure, usar UPDATE directo
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /api/audits/{id}:
+ *   delete:
+ *     summary: Eliminar una entrada de auditoría
+ *     tags: [Audits]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       204:
+ *         description: Auditoría eliminada exitosamente
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Auditoría no encontrada
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.delete(
+  '/:id',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_auditoria', sql.UniqueIdentifier, req.params.id)
+        .query('DELETE FROM Auditoria WHERE id_auditoria = @id_auditoria'); // Nota: No hay stored procedure, usar DELETE directo
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 module.exports = router;

@@ -1,9 +1,10 @@
 const express = require('express');
-const router = express.Router();
-const { body, param, validationResult } = require('express-validator');
-const sql = require('mssql');
+const { body, param } = require('express-validator');
 const { authenticate, checkRole } = require('../middleware/auth');
-const config = require('../config/dbConfig');
+const { poolPromise, sql } = require('../config/db');
+const { logger } = require('../config/db');
+
+const router = express.Router();
 
 /**
  * @swagger
@@ -22,6 +23,7 @@ const config = require('../config/dbConfig');
  *         - nombre_campaña
  *         - fecha_inicio
  *         - id_vacuna
+ *         - estado
  *       properties:
  *         id_campaña:
  *           type: string
@@ -33,36 +35,29 @@ const config = require('../config/dbConfig');
  *         fecha_inicio:
  *           type: string
  *           format: date
- *           description: Fecha de inicio de la campaña
+ *           description: Fecha de inicio
  *         fecha_fin:
  *           type: string
  *           format: date
- *           description: Fecha de fin de la campaña (opcional)
+ *           description: Fecha de fin (opcional)
  *         objetivo:
  *           type: string
  *           description: Objetivo de la campaña (opcional)
  *         id_vacuna:
  *           type: string
  *           format: uuid
- *           description: ID de la vacuna asociada
+ *           description: ID de la vacuna
  *         estado:
  *           type: string
  *           enum: [Planificada, En Curso, Finalizada]
  *           description: Estado de la campaña
- *       example:
- *         id_campaña: "123e4567-e89b-12d3-a456-426614174004"
- *         nombre_campaña: "Campaña Sarampión 2025"
- *         fecha_inicio: "2025-07-01"
- *         fecha_fin: "2025-12-31"
- *         objetivo: "Vacunar al 95% de los niños"
- *         id_vacuna: "123e4567-e89b-12d3-a456-426614174003"
- *         estado: "Planificada"
  *     CampaignInput:
  *       type: object
  *       required:
  *         - nombre_campaña
  *         - fecha_inicio
  *         - id_vacuna
+ *         - estado
  *       properties:
  *         nombre_campaña:
  *           type: string
@@ -79,28 +74,33 @@ const config = require('../config/dbConfig');
  *         id_vacuna:
  *           type: string
  *           format: uuid
+ *         estado:
+ *           type: string
+ *           enum: [Planificada, En Curso, Finalizada]
  */
 
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
 const validateCampaign = [
-  body('nombre_campaña').notEmpty().isString().withMessage('Nombre de la campaña es requerido'),
+  body('nombre_campaña').notEmpty().isString().withMessage('Nombre de campaña es requerido'),
   body('fecha_inicio').isDate().withMessage('Fecha de inicio inválida'),
   body('fecha_fin').optional().isDate().withMessage('Fecha de fin inválida'),
   body('objetivo').optional().isString(),
   body('id_vacuna').isUUID().withMessage('ID de vacuna inválido'),
+  body('estado').isIn(['Planificada', 'En Curso', 'Finalizada']).withMessage('Estado inválido'),
 ];
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
 /**
  * @swagger
  * /api/campaigns:
  *   get:
- *     summary: Obtener todas las campañas
+ *     summary: Listar todas las campañas
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de campañas
+ *         description: Lista de campañas obtenida exitosamente
  *         content:
  *           application/json:
  *             schema:
@@ -108,18 +108,62 @@ const validateCampaign = [
  *               items:
  *                 $ref: '#/components/schemas/Campaign'
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.get('/', authenticate, async (req, res) => {
+router.get('/', [authenticate, checkRole(['director', 'administrador'])], async (req, res, next) => {
   try {
-    const pool = await sql.connect(config);
-    const result = await pool.request().query(`
-      SELECT id_campaña, nombre_campaña, fecha_inicio, fecha_fin, objetivo, id_vacuna, estado
-      FROM Campañas
-    `);
-    res.json(result.recordset);
+    const pool = await poolPromise;
+    const result = await pool.request().query('SELECT * FROM Campanas_Vacunacion');
+    res.status(200).json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener campañas' });
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/campaigns/{id}:
+ *   get:
+ *     summary: Obtener una campaña por ID
+ *     tags: [Campaigns]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Campaña obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Campaign'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Campaña no encontrada
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID], async (req, res, next) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_campaña', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT * FROM Campanas_Vacunacion WHERE id_campaña = @id_campaña');
+    if (result.recordset.length === 0) {
+      const error = new Error('Campaña no encontrada');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json(result.recordset[0]);
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -127,7 +171,7 @@ router.get('/', authenticate, async (req, res) => {
  * @swagger
  * /api/campaigns:
  *   post:
- *     summary: Crear una nueva campaña
+ *     summary: Crear una nueva campaña de vacunación
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
@@ -150,86 +194,36 @@ router.get('/', authenticate, async (req, res) => {
  *                   format: uuid
  *       400:
  *         description: Error en los datos enviados
- *       403:
- *         description: No autorizado (requiere rol de administrador)
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.post('/', authenticate, checkRole(['administrador']), validateCampaign, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  const { nombre_campaña, fecha_inicio, fecha_fin, objetivo, id_vacuna } = req.body;
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-      .input('nombre_campaña', sql.NVarChar, nombre_campaña)
-      .input('fecha_inicio', sql.Date, fecha_inicio)
-      .input('fecha_fin', sql.Date, fecha_fin)
-      .input('objetivo', sql.NVarChar, objetivo)
-      .input('id_vacuna', sql.UniqueIdentifier, id_vacuna)
-      .execute('sp_CrearCampaña');
-
-    res.status(201).json({ id_campaña: result.recordset[0].id_campaña });
-  } catch (err) {
-    if (err.number === 50001 || err.number === 50002) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al crear campaña' });
+router.post(
+  '/',
+  [authenticate, checkRole(['director', 'administrador']), validateCampaign],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('nombre_campaña', sql.NVarChar, req.body.nombre_campaña)
+        .input('fecha_inicio', sql.Date, req.body.fecha_inicio)
+        .input('fecha_fin', sql.Date, req.body.fecha_fin)
+        .input('objetivo', sql.NVarChar, req.body.objetivo)
+        .input('id_vacuna', sql.UniqueIdentifier, req.body.id_vacuna)
+        .input('estado', sql.NVarChar, req.body.estado)
+        .execute('sp_CrearCampanaVacunacion');
+      res.status(201).json({ id_campaña: result.recordset[0].id_campaña });
+    } catch (err) {
+      next(err);
+    }
   }
-});
-
-/**
- * @swagger
- * /api/campaigns/{id}:
- *   get:
- *     summary: Obtener una campaña por ID
- *     tags: [Campaigns]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID de la campaña
- *     responses:
- *       200:
- *         description: Campaña encontrada
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Campaign'
- *       400:
- *         description: ID inválido
- *       404:
- *         description: Campaña no encontrada
- *       500:
- *         description: Error del servidor
- */
-router.get('/:id', authenticate, validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request()
-      .input('id_campaña', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_ObtenerCampaña');
-
-    if (!result.recordset[0]) return res.status(404).json({ error: 'Campaña no encontrada' });
-    res.json(result.recordset[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Error al obtener campaña' });
-  }
-});
+);
 
 /**
  * @swagger
  * /api/campaigns/{id}:
  *   put:
- *     summary: Actualizar una campaña
+ *     summary: Actualizar una campaña de vacunación
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
@@ -240,7 +234,6 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID de la campaña
  *     requestBody:
  *       required: true
  *       content:
@@ -248,54 +241,43 @@ router.get('/:id', authenticate, validateUUID, async (req, res) => {
  *           schema:
  *             $ref: '#/components/schemas/CampaignInput'
  *     responses:
- *       200:
- *         description: Campaña actualizada
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Campaña actualizada
+ *       204:
+ *         description: Campaña actualizada exitosamente
  *       400:
  *         description: Error en los datos enviados
- *       403:
- *         description: No autorizado (requiere rol de administrador)
  *       404:
  *         description: Campaña no encontrada
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.put('/:id', authenticate, checkRole(['administrador']), validateUUID, validateCampaign, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  const { nombre_campaña, fecha_inicio, fecha_fin, objetivo, id_vacuna } = req.body;
-
-  try {
-    const pool = await sql.connect(config);
-    await pool.request()
-      .input('id_campaña', sql.UniqueIdentifier, req.params.id)
-      .input('nombre_campaña', sql.NVarChar, nombre_campaña)
-      .input('fecha_inicio', sql.Date, fecha_inicio)
-      .input('fecha_fin', sql.Date, fecha_fin)
-      .input('objetivo', sql.NVarChar, objetivo)
-      .input('id_vacuna', sql.UniqueIdentifier, id_vacuna)
-      .execute('sp_ActualizarCampaña');
-
-    res.json({ message: 'Campaña actualizada' });
-  } catch (err) {
-    if (err.number === 50001 || err.number === 50002 || err.number === 50003) return res.status(400).json({ error: err.message });
-    res.status(500).json({ error: 'Error al actualizar campaña' });
+router.put(
+  '/:id',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID, validateCampaign],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_campaña', sql.UniqueIdentifier, req.params.id)
+        .input('nombre_campaña', sql.NVarChar, req.body.nombre_campaña)
+        .input('fecha_inicio', sql.Date, req.body.fecha_inicio)
+        .input('fecha_fin', sql.Date, req.body.fecha_fin)
+        .input('objetivo', sql.NVarChar, req.body.objetivo)
+        .input('id_vacuna', sql.UniqueIdentifier, req.body.id_vacuna)
+        .input('estado', sql.NVarChar, req.body.estado)
+        .execute('sp_ActualizarCampanaVacunacion');
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 /**
  * @swagger
  * /api/campaigns/{id}:
  *   delete:
- *     summary: Eliminar una campaña
+ *     summary: Eliminar una campaña de vacunación
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
@@ -306,42 +288,31 @@ router.put('/:id', authenticate, checkRole(['administrador']), validateUUID, val
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID de la campaña
  *     responses:
- *       200:
- *         description: Campaña eliminada
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Campaña eliminada
+ *       204:
+ *         description: Campaña eliminada exitosamente
  *       400:
  *         description: ID inválido
- *       403:
- *         description: No autorizado (requiere rol de administrador)
  *       404:
  *         description: Campaña no encontrada
  *       500:
- *         description: Error del servidor
+ *         description: Error interno del servidor
  */
-router.delete('/:id', authenticate, checkRole(['administrador']), validateUUID, async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-  try {
-    const pool = await sql.connect(config);
-    await pool.request()
-      .input('id_campaña', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_EliminarCampaña');
-
-    res.json({ message: 'Campaña eliminada' });
-  } catch (err) {
-    if (err.number === 50001) return res.status(404).json({ error: err.message });
-    res.status(500).json({ error: 'Error al eliminar campaña' });
+router.delete(
+  '/:id',
+  [authenticate, checkRole(['director', 'administrador']), validateUUID],
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_campaña', sql.UniqueIdentifier, req.params.id)
+        .execute('sp_EliminarCampanaVacunacion');
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 module.exports = router;
