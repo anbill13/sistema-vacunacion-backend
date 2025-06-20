@@ -5,7 +5,6 @@ const { authenticate, checkRole } = require('./middleware/auth'); // Ajustado a 
 const { logger } = require('./config/db');
 require('dotenv').config();
 
-// Importar todos los archivos de rutas
 const childrenRoutes = require('./routes/children');
 const guardiansRoutes = require('./routes/guardians');
 const centersRoutes = require('./routes/centers');
