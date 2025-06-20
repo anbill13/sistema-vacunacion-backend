@@ -1,35 +1,43 @@
-// middleware/role.js
-const jwt = require('jsonwebtoken');
+// src/middleware/role.js
+const winston = require('winston');
 
-const checkRole = (allowedRoles) => {
-  return (req, res, next) => {
-    try {
-      // Obtener el token del encabezado Authorization
-      const token = req.headers.authorization?.split(' ')[1];
-      if (!token) {
-        const error = new Error('Authentication required');
-        error.statusCode = 401;
-        throw error;
-      }
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
 
-      // Verificar el token y extraer el payload
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const userRole = decoded.rol;
+const checkRole = (roles) => (req, res, next) => {
+  const userRole = req.user?.rol;
 
-      // Verificar si el rol del usuario está en los roles permitidos
-      if (!allowedRoles.includes(userRole)) {
-        const error = new Error('Insufficient permissions');
-        error.statusCode = 403;
-        throw error;
-      }
+  if (!userRole) {
+    logger.warn('Usuario sin rol asignado', { user: req.user, ip: req.ip });
+    const error = new Error('No role assigned to user');
+    error.statusCode = 403;
+    return next(error);
+  }
 
-      // Agregar el usuario decodificado al request para uso posterior
-      req.user = decoded;
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
+  if (!roles.includes(userRole)) {
+    logger.warn('Acceso denegado: rol no autorizado', {
+      user: req.user.username,
+      role: userRole,
+      requiredRoles: roles,
+      ip: req.ip,
+    });
+    const error = new Error('Insufficient permissions');
+    error.statusCode = 403;
+    return next(error);
+  }
+
+  logger.info('Rol autorizado', { user: req.user.username, role: userRole, ip: req.ip });
+  next();
 };
 
 module.exports = checkRole;

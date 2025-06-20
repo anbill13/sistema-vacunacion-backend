@@ -1,10 +1,36 @@
 const express = require('express');
-const { body, param } = require('express-validator');
-const { authenticate, checkRole } = require('../middleware/auth');
+const { body, param, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
-const { logger } = require('../config/db');
+const winston = require('winston');
 
 const router = express.Router();
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
+
+const validateSupply = [
+  body('nombre_suministro').notEmpty().isString().withMessage('Nombre del suministro es requerido'),
+  body('tipo_suministro').optional().isString().withMessage('Tipo de suministro debe ser una cadena válida'),
+  body('cantidad_total').isInt({ min: 1 }).withMessage('Cantidad total debe ser un número positivo'),
+  body('cantidad_disponible').isInt({ min: 0 }).withMessage('Cantidad disponible debe ser un número no negativo'),
+  body('id_centro').isUUID().withMessage('ID de centro inválido'),
+  body('fecha_entrada').isDate().withMessage('Fecha de entrada inválida'),
+  body('fecha_vencimiento').optional().isDate().withMessage('Fecha de vencimiento inválida'),
+  body('proveedor').optional().isString().withMessage('Proveedor debe ser una cadena válida'),
+  body('condiciones_almacenamiento').optional().isString().withMessage('Condiciones de almacenamiento debe ser una cadena válida'),
+];
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
 /**
  * @swagger
@@ -50,16 +76,20 @@ const router = express.Router();
  *           type: string
  *           format: date
  *           description: Fecha de entrada
- *         fecha_vencimiento:
- *           type: string
- *           format: date
- *           description: Fecha de vencimiento (opcional)
- *         proveedor:
- *           type: string
- *           description: Proveedor (opcional)
- *         condiciones_almacenamiento:
- *           type: string
- *           description: Condiciones de almacenamiento (opcional)
+ *         fecha_vencimiento Borne * tipo_suministro:
+ *          type: string
+ *          description: Tipo de suministro (opcional)
+ *       example:
+ *         id_suministro: "123e4567-e89b-12d3-a456-426614174015"
+ *         nombre_suministro: "Vacuna contra el sarampión"
+ *         tipo_suministro: "Vacuna"
+ *         cantidad_total: 100
+ *         cantidad_disponible: 80
+ *         id_centro: "123e4567-e89b-12d3-a456-426614174007"
+ *         fecha_entrada: "2025-06-01"
+ *         fecha_vencimiento: "2026-06-01"
+ *         proveedor: "Farmacéutica XYZ"
+ *         condiciones_almacenamiento: "Refrigerar entre 2-8°C"
  *     SupplyInput:
  *       type: object
  *       required:
@@ -96,28 +126,12 @@ const router = express.Router();
  *           nullable: true
  */
 
-const validateSupply = [
-  body('nombre_suministro').notEmpty().isString().withMessage('Nombre del suministro es requerido'),
-  body('tipo_suministro').optional().isString(),
-  body('cantidad_total').isInt({ min: 1 }).withMessage('Cantidad total debe ser un número positivo'),
-  body('cantidad_disponible').isInt({ min: 0 }).withMessage('Cantidad disponible debe ser un número no negativo'),
-  body('id_centro').isUUID().withMessage('ID de centro inválido'),
-  body('fecha_entrada').isDate().withMessage('Fecha de entrada inválida'),
-  body('fecha_vencimiento').optional().isDate().withMessage('Fecha de vencimiento inválida'),
-  body('proveedor').optional().isString(),
-  body('condiciones_almacenamiento').optional().isString(),
-];
-
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-
 /**
  * @swagger
  * /api/supplies:
  *   get:
  *     summary: Listar todos los suministros
  *     tags: [Supplies]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Lista de suministros obtenida exitosamente
@@ -130,13 +144,17 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/', [authenticate, checkRole(['director', 'administrador'])], async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
+    logger.info('Obteniendo suministros', { ip: req.ip });
     const pool = await poolPromise;
     const result = await pool.request().query('SELECT * FROM Inventario_Suministros');
     res.status(200).json(result.recordset);
   } catch (err) {
-    next(err);
+    logger.error('Error al obtener suministros', { error: err.message, ip: req.ip });
+    const error = new Error('Error al obtener suministros');
+    error.statusCode = 500;
+    next(error);
   }
 });
 
@@ -146,8 +164,6 @@ router.get('/', [authenticate, checkRole(['director', 'administrador'])], async 
  *   get:
  *     summary: Obtener un suministro por ID
  *     tags: [Supplies]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -169,20 +185,32 @@ router.get('/', [authenticate, checkRole(['director', 'administrador'])], async 
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID], async (req, res, next) => {
+router.get('/:id', validateUUID, async (req, res, next) => {
   try {
+    logger.info('Obteniendo suministro por ID', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
     const pool = await poolPromise;
     const result = await pool
       .request()
       .input('id_suministro', sql.UniqueIdentifier, req.params.id)
       .query('SELECT * FROM Inventario_Suministros WHERE id_suministro = @id_suministro');
     if (result.recordset.length === 0) {
+      logger.warn('Suministro no encontrado', { id: req.params.id, ip: req.ip });
       const error = new Error('Suministro no encontrado');
       error.statusCode = 404;
       throw error;
     }
     res.status(200).json(result.recordset[0]);
   } catch (err) {
+    logger.error('Error al obtener suministro', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
     next(err);
   }
 });
@@ -193,8 +221,6 @@ router.get('/:id', [authenticate, checkRole(['director', 'administrador']), vali
  *   post:
  *     summary: Crear un nuevo suministro
  *     tags: [Supplies]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -217,30 +243,39 @@ router.get('/:id', [authenticate, checkRole(['director', 'administrador']), vali
  *       500:
  *         description: Error interno del servidor
  */
-router.post(
-  '/',
-  [authenticate, checkRole(['director', 'administrador']), validateSupply],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('nombre_suministro', sql.NVarChar, req.body.nombre_suministro)
-        .input('tipo_suministro', sql.NVarChar, req.body.tipo_suministro)
-        .input('cantidad_total', sql.Int, req.body.cantidad_total)
-        .input('cantidad_disponible', sql.Int, req.body.cantidad_disponible)
-        .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
-        .input('fecha_entrada', sql.Date, req.body.fecha_entrada)
-        .input('fecha_vencimiento', sql.Date, req.body.fecha_vencimiento)
-        .input('proveedor', sql.NVarChar, req.body.proveedor)
-        .input('condiciones_almacenamiento', sql.NVarChar, req.body.condiciones_almacenamiento)
-        .query('INSERT INTO Inventario_Suministros (nombre_suministro, tipo_suministro, cantidad_total, cantidad_disponible, id_centro, fecha_entrada, fecha_vencimiento, proveedor, condiciones_almacenamiento) VALUES (@nombre_suministro, @tipo_suministro, @cantidad_total, @cantidad_disponible, @id_centro, @fecha_entrada, @fecha_vencimiento, @proveedor, @condiciones_almacenamiento); SELECT SCOPE_IDENTITY() AS id_suministro'); // Nota: No hay stored procedure, usar INSERT directo
-      res.status(201).json({ id_suministro: result.recordset[0].id_suministro });
-    } catch (err) {
-      next(err);
+router.post('/', validateSupply, async (req, res, next) => {
+  try {
+    logger.info('Creando suministro', { nombre: req.body.nombre_suministro, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('nombre_suministro', sql.NVarChar, req.body.nombre_suministro)
+      .input('tipo_suministro', sql.NVarChar, req.body.tipo_suministro)
+      .input('cantidad_total', sql.Int, req.body.cantidad_total)
+      .input('cantidad_disponible', sql.Int, req.body.cantidad_disponible)
+      .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+      .input('fecha_entrada', sql.Date, req.body.fecha_entrada)
+      .input('fecha_vencimiento', sql.Date, req.body.fecha_vencimiento)
+      .input('proveedor', sql.NVarChar, req.body.proveedor)
+      .input('condiciones_almacenamiento', sql.NVarChar, req.body.condiciones_almacenamiento)
+      .execute('sp_CrearSuministro');
+    res.status(201).json({ id_suministro: result.recordset[0].id_suministro });
+  } catch (err) {
+    logger.error('Error al crear suministro', { error: err.message, ip: req.ip });
+    const error = new Error('Error al crear suministro');
+    error.statusCode = err.number === 50001 ? 400 : 500;
+    error.data = err.message;
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -248,8 +283,6 @@ router.post(
  *   put:
  *     summary: Actualizar un suministro
  *     tags: [Supplies]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -273,31 +306,48 @@ router.post(
  *       500:
  *         description: Error interno del servidor
  */
-router.put(
-  '/:id',
-  [authenticate, checkRole(['director', 'administrador']), validateUUID, validateSupply],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_suministro', sql.UniqueIdentifier, req.params.id)
-        .input('nombre_suministro', sql.NVarChar, req.body.nombre_suministro)
-        .input('tipo_suministro', sql.NVarChar, req.body.tipo_suministro)
-        .input('cantidad_total', sql.Int, req.body.cantidad_total)
-        .input('cantidad_disponible', sql.Int, req.body.cantidad_disponible)
-        .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
-        .input('fecha_entrada', sql.Date, req.body.fecha_entrada)
-        .input('fecha_vencimiento', sql.Date, req.body.fecha_vencimiento)
-        .input('proveedor', sql.NVarChar, req.body.proveedor)
-        .input('condiciones_almacenamiento', sql.NVarChar, req.body.condiciones_almacenamiento)
-        .execute('sp_ActualizarSuministro');
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+router.put('/:id', [validateUUID, validateSupply], async (req, res, next) => {
+  try {
+    logger.info('Actualizando suministro', { id: req.params.id, nombre: req.body.nombre_suministro, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_suministro', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Inventario_Suministros WHERE id_suministro = @id_suministro');
+    if (exists.recordset.length === 0) {
+      logger.warn('Suministro no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('Suministro no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_suministro', sql.UniqueIdentifier, req.params.id)
+      .input('nombre_suministro', sql.NVarChar, req.body.nombre_suministro)
+      .input('tipo_suministro', sql.NVarChar, req.body.tipo_suministro)
+      .input('cantidad_total', sql.Int, req.body.cantidad_total)
+      .input('cantidad_disponible', sql.Int, req.body.cantidad_disponible)
+      .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+      .input('fecha_entrada', sql.Date, req.body.fecha_entrada)
+      .input('fecha_vencimiento', sql.Date, req.body.fecha_vencimiento)
+      .input('proveedor', sql.NVarChar, req.body.proveedor)
+      .input('condiciones_almacenamiento', sql.NVarChar, req.body.condiciones_almacenamiento)
+      .execute('sp_ActualizarSuministro');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al actualizar suministro', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
-);
+});
 
 /**
  * @swagger
@@ -305,8 +355,6 @@ router.put(
  *   delete:
  *     summary: Eliminar un suministro
  *     tags: [Supplies]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -324,21 +372,38 @@ router.put(
  *       500:
  *         description: Error interno del servidor
  */
-router.delete(
-  '/:id',
-  [authenticate, checkRole(['director', 'administrador']), validateUUID],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_suministro', sql.UniqueIdentifier, req.params.id)
-        .execute('sp_EliminarSuministro');
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+router.delete('/:id', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Eliminando suministro', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_suministro', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Inventario_Suministros WHERE id_suministro = @id_suministro');
+    if (exists.recordset.length === 0) {
+      logger.warn('Suministro no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('Suministro no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_suministro', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_EliminarSuministro');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al eliminar suministro', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
-);
+});
 
 module.exports = router;

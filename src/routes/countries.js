@@ -1,8 +1,30 @@
 const express = require('express');
+const { body, param, validationResult } = require('express-validator');
+const { poolPromise, sql } = require('../config/db');
+const winston = require('winston');
+
 const router = express.Router();
-const { poolPromise, sql } = require('../config/db'); // Use db.js
-const { authenticate, checkRole } = require('../middleware/auth'); // Add auth middleware
-const { param, body } = require('express-validator'); // For validation
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
+
+const validateCountry = [
+  body('nombre_pais').notEmpty().isString().withMessage('Nombre del país es requerido'),
+  body('codigo_iso').notEmpty().isString().withMessage('Código ISO es requerido'),
+  body('estado').isIn(['Activo', 'Inactivo']).withMessage('Estado inválido'),
+];
 
 /**
  * @swagger
@@ -33,6 +55,11 @@ const { param, body } = require('express-validator'); // For validation
  *         - nombre_pais
  *         - codigo_iso
  *         - estado
+ *       example:
+ *         id_pais: "123e4567-e89b-12d3-a456-426614174020"
+ *         nombre_pais: "España"
+ *         codigo_iso: "ESP"
+ *         estado: "Activo"
  *     CountryInput:
  *       type: object
  *       properties:
@@ -49,22 +76,12 @@ const { param, body } = require('express-validator'); // For validation
  *         - estado
  */
 
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-
-const validateCountry = [
-  body('nombre_pais').notEmpty().isString().withMessage('Nombre del país es requerido'),
-  body('codigo_iso').notEmpty().isString().withMessage('Código ISO es requerido'),
-  body('estado').isIn(['Activo', 'Inactivo']).withMessage('Estado inválido'),
-];
-
 /**
  * @swagger
  * /api/countries:
  *   get:
  *     summary: Retrieve all countries
  *     tags: [Countries]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: A list of countries
@@ -77,14 +94,18 @@ const validateCountry = [
  *       500:
  *         description: Internal server error
  */
-router.get('/', [authenticate, checkRole(['director', 'administrador'])], async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request().execute('sp_ListarPaises');
-        res.json(result.recordset);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+router.get('/', async (req, res, next) => {
+  try {
+    logger.info('Obteniendo países', { ip: req.ip });
+    const pool = await poolPromise;
+    const result = await pool.request().execute('sp_ListarPaises');
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    logger.error('Error al obtener países', { error: err.message, ip: req.ip });
+    const error = new Error('Error al obtener países');
+    error.statusCode = 500;
+    next(error);
+  }
 });
 
 /**
@@ -93,8 +114,6 @@ router.get('/', [authenticate, checkRole(['director', 'administrador'])], async 
  *   get:
  *     summary: Retrieve a country by ID
  *     tags: [Countries]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -110,25 +129,41 @@ router.get('/', [authenticate, checkRole(['director', 'administrador'])], async 
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Country'
+ *       400:
+ *         description: Invalid ID
  *       404:
  *         description: Country not found
  *       500:
  *         description: Internal server error
  */
-router.get('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID], async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('id_pais', sql.UniqueIdentifier, req.params.id)
-            .execute('sp_ObtenerPaisPorId');
-        if (result.recordset.length > 0) {
-            res.json(result.recordset[0]);
-        } else {
-            res.status(404).json({ error: 'País no encontrado' });
-        }
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+router.get('/:id', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Obteniendo país por ID', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_pais', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_ObtenerPaisPorId');
+    if (result.recordset.length === 0) {
+      logger.warn('País no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('País no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json(result.recordset[0]);
+  } catch (err) {
+    logger.error('Error al obtener país', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
 });
 
 /**
@@ -137,8 +172,6 @@ router.get('/:id', [authenticate, checkRole(['director', 'administrador']), vali
  *   post:
  *     summary: Create a new country
  *     tags: [Countries]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -161,18 +194,32 @@ router.get('/:id', [authenticate, checkRole(['director', 'administrador']), vali
  *       500:
  *         description: Internal server error
  */
-router.post('/', [authenticate, checkRole(['director', 'administrador']), validateCountry], async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('nombre_pais', sql.NVarChar, req.body.nombre_pais)
-            .input('codigo_iso', sql.NVarChar, req.body.codigo_iso)
-            .input('estado', sql.NVarChar, req.body.estado)
-            .execute('sp_CrearPais');
-        res.status(201).json({ id_pais: result.recordset[0].id_pais });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+router.post('/', validateCountry, async (req, res, next) => {
+  try {
+    logger.info('Creando país', { nombre: req.body.nombre_pais, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('nombre_pais', sql.NVarChar, req.body.nombre_pais)
+      .input('codigo_iso', sql.NVarChar, req.body.codigo_iso)
+      .input('estado', sql.NVarChar, req.body.estado)
+      .execute('sp_CrearPais');
+    res.status(201).json({ id_pais: result.recordset[0].id_pais });
+  } catch (err) {
+    logger.error('Error al crear país', { error: err.message, ip: req.ip });
+    const error = new Error('Error al crear país');
+    error.statusCode = err.number === 50001 ? 400 : 500;
+    error.data = err.message;
+    next(error);
+  }
 });
 
 /**
@@ -181,8 +228,6 @@ router.post('/', [authenticate, checkRole(['director', 'administrador']), valida
  *   put:
  *     summary: Update an existing country
  *     tags: [Countries]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -198,7 +243,7 @@ router.post('/', [authenticate, checkRole(['director', 'administrador']), valida
  *           schema:
  *             $ref: '#/components/schemas/CountryInput'
  *     responses:
- *       200:
+ *       204:
  *         description: Country updated successfully
  *       400:
  *         description: Bad request (e.g., missing required fields)
@@ -207,22 +252,41 @@ router.post('/', [authenticate, checkRole(['director', 'administrador']), valida
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID, validateCountry], async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('id_pais', sql.UniqueIdentifier, req.params.id)
-            .input('nombre_pais', sql.NVarChar, req.body.nombre_pais)
-            .input('codigo_iso', sql.NVarChar, req.body.codigo_iso)
-            .input('estado', sql.NVarChar, req.body.estado)
-            .execute('sp_ActualizarPais');
-        if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ error: 'País no encontrado' });
-        }
-        res.status(200).json({ message: 'País actualizado' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+router.put('/:id', [validateUUID, validateCountry], async (req, res, next) => {
+  try {
+    logger.info('Actualizando país', { id: req.params.id, nombre: req.body.nombre_pais, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_pais', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Paises WHERE id_pais = @id_pais');
+    if (exists.recordset.length === 0) {
+      logger.warn('País no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('País no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_pais', sql.UniqueIdentifier, req.params.id)
+      .input('nombre_pais', sql.NVarChar, req.body.nombre_pais)
+      .input('codigo_iso', sql.NVarChar, req.body.codigo_iso)
+      .input('estado', sql.NVarChar, req.body.estado)
+      .execute('sp_ActualizarPais');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al actualizar país', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
 });
 
 /**
@@ -231,8 +295,6 @@ router.put('/:id', [authenticate, checkRole(['director', 'administrador']), vali
  *   delete:
  *     summary: Delete a country
  *     tags: [Countries]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -242,26 +304,47 @@ router.put('/:id', [authenticate, checkRole(['director', 'administrador']), vali
  *           format: uuid
  *         description: The ID of the country to delete
  *     responses:
- *       200:
+ *       204:
  *         description: Country deleted successfully
+ *       400:
+ *         description: Invalid ID
  *       404:
  *         description: Country not found
  *       500:
  *         description: Internal server error
  */
-router.delete('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID], async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('id_pais', sql.UniqueIdentifier, req.params.id)
-            .execute('sp_EliminarPais');
-        if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ error: 'País no encontrado' });
-        }
-        res.status(200).json({ message: 'País eliminado' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+router.delete('/:id', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Eliminando país', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_pais', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Paises WHERE id_pais = @id_pais');
+    if (exists.recordset.length === 0) {
+      logger.warn('País no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('País no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_pais', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_EliminarPais');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al eliminar país', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
 });
 
 module.exports = router;

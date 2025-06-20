@@ -1,10 +1,35 @@
 const express = require('express');
-const { body, param, query } = require('express-validator');
-const { authenticate, checkRole } = require('../middleware/auth');
+const { body, param, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
-const { logger } = require('../config/db');
+const winston = require('winston');
 
 const router = express.Router();
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
+
+const validateVaccination = [
+  body('id_niño').isUUID().withMessage('ID de niño inválido'),
+  body('id_lote').isUUID().withMessage('ID de lote inválido'),
+  body('id_personal').isUUID().withMessage('ID de personal inválido'),
+  body('id_centro').optional().isUUID().withMessage('ID de centro inválido'),
+  body('fecha_vacunacion').isISO8601().withMessage('Fecha de vacunación inválida'),
+  body('dosis_aplicada').isInt({ min: 1 }).withMessage('Dosis aplicada debe ser un número positivo'),
+  body('sitio_aplicacion').optional().isString().withMessage('Sitio de aplicación debe ser una cadena válida'),
+  body('observaciones').optional().isString().withMessage('Observaciones debe ser una cadena válida'),
+];
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
 /**
  * @swagger
@@ -68,6 +93,19 @@ const router = express.Router();
  *         personal_responsable:
  *           type: string
  *           description: Nombre del personal responsable
+ *       example:
+ *         id_historial: "123e4567-e89b-12d3-a456-426614174019"
+ *         id_niño: "123e4567-e89b-12d3-a456-426614174006"
+ *         id_lote: "123e4567-e89b-12d3-a456-426614174018"
+ *         id_personal: "123e4567-e89b-12d3-a456-426614174005"
+ *         id_centro: "123e4567-e89b-12d3-a456-426614174007"
+ *         fecha_vacunacion: "2025-06-20T14:00:00Z"
+ *         dosis_aplicada: 1
+ *         sitio_aplicacion: "Brazo izquierdo"
+ *         observaciones: "Sin reacciones adversas"
+ *         nombre_vacuna: "Vacuna contra el sarampión"
+ *         nombre_centro: "Centro de Salud Central"
+ *         personal_responsable: "Dr. Juan Pérez"
  *     VaccinationHistoryInput:
  *       type: object
  *       required:
@@ -103,27 +141,12 @@ const router = express.Router();
  *           nullable: true
  */
 
-const validateVaccination = [
-  body('id_niño').isUUID().withMessage('ID de niño inválido'),
-  body('id_lote').isUUID().withMessage('ID de lote inválido'),
-  body('id_personal').isUUID().withMessage('ID de personal inválido'),
-  body('id_centro').optional().isUUID().withMessage('ID de centro inválido'),
-  body('fecha_vacunacion').isISO8601().withMessage('Fecha de vacunación inválida'),
-  body('dosis_aplicada').isInt({ min: 1 }).withMessage('Dosis aplicada debe ser un número positivo'),
-  body('sitio_aplicacion').optional().isString(),
-  body('observaciones').optional().isString(),
-];
-
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-
 /**
  * @swagger
  * /api/vaccination-history:
  *   get:
  *     summary: Listar todos los historiales de vacunación
  *     tags: [Vaccinations]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Lista de historiales obtenida exitosamente
@@ -136,24 +159,26 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
+    logger.info('Obteniendo historiales de vacunación', { ip: req.ip });
     const pool = await poolPromise;
     const result = await pool.request().query('SELECT * FROM Historial_Vacunacion');
     res.status(200).json(result.recordset);
   } catch (err) {
-    next(err);
+    logger.error('Error al obtener historiales de vacunación', { error: err.message, ip: req.ip });
+    const error = new Error('Error al obtener historiales de vacunación');
+    error.statusCode = 500;
+    next(error);
   }
 });
 
 /**
  * @swagger
- * /api/vaccination-history/{id}:
+ * /api/vaccination-history/by-id/{id}:
  *   get:
  *     summary: Obtener un historial de vacunación por ID
  *     tags: [Vaccinations]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -161,6 +186,7 @@ router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (r
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: ID del historial de vacunación
  *     responses:
  *       200:
  *         description: Historial obtenido exitosamente
@@ -175,20 +201,92 @@ router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (r
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID], async (req, res, next) => {
+router.get('/by-id/:id', validateUUID, async (req, res, next) => {
   try {
+    logger.info('Obteniendo historial de vacunación por ID', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
     const pool = await poolPromise;
     const result = await pool
       .request()
       .input('id_historial', sql.UniqueIdentifier, req.params.id)
       .query('SELECT * FROM Historial_Vacunacion WHERE id_historial = @id_historial');
     if (result.recordset.length === 0) {
+      logger.warn('Historial no encontrado', { id: req.params.id, ip: req.ip });
       const error = new Error('Historial no encontrado');
       error.statusCode = 404;
       throw error;
     }
     res.status(200).json(result.recordset[0]);
   } catch (err) {
+    logger.error('Error al obtener historial de vacunación', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/vaccination-history/by-child/:id:
+ *   get:
+ *     summary: Obtener el historial de vacunación por ID de niño
+ *     tags: [Vaccinations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del niño
+ *     responses:
+ *       200:
+ *         description: Historial obtenido exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/VaccinationHistory'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Historial no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/by-child/:id', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Obteniendo historial de vacunación por ID de niño', { id_niño: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_niño', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_ObtenerHistorialVacunacion');
+    if (result.recordset.length === 0) {
+      logger.warn('Historial no encontrado para el niño', { id_niño: req.params.id, ip: req.ip });
+      const error = new Error('Historial no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    logger.error('Error al obtener historial de vacunación por niño', { id_niño: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
     next(err);
   }
 });
@@ -199,8 +297,6 @@ router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), valida
  *   post:
  *     summary: Registrar una nueva vacunación
  *     tags: [Vaccinations]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -223,29 +319,38 @@ router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), valida
  *       500:
  *         description: Error interno del servidor
  */
-router.post(
-  '/',
-  [authenticate, checkRole(['doctor', 'administrador']), validateVaccination],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
-        .input('id_lote', sql.UniqueIdentifier, req.body.id_lote)
-        .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
-        .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
-        .input('fecha_vacunacion', sql.DateTime2, req.body.fecha_vacunacion)
-        .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
-        .input('sitio_aplicacion', sql.NVarChar, req.body.sitio_aplicacion)
-        .input('observaciones', sql.NVarChar, req.body.observaciones)
-        .execute('sp_RegistrarVacunacion');
-      res.status(201).json({ id_historial: result.recordset[0].id_historial });
-    } catch (err) {
-      next(err);
+router.post('/', validateVaccination, async (req, res, next) => {
+  try {
+    logger.info('Creando historial de vacunación', { id_niño: req.body.id_niño, id_lote: req.body.id_lote, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
+      .input('id_lote', sql.UniqueIdentifier, req.body.id_lote)
+      .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
+      .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+      .input('fecha_vacunacion', sql.DateTime2, req.body.fecha_vacunacion)
+      .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
+      .input('sitio_aplicacion', sql.NVarChar, req.body.sitio_aplicacion)
+      .input('observaciones', sql.NVarChar, req.body.observaciones)
+      .execute('sp_RegistrarVacunacion');
+    res.status(201).json({ id_historial: result.recordset[0].id_historial });
+  } catch (err) {
+    logger.error('Error al crear historial de vacunación', { error: err.message, ip: req.ip });
+    const error = new Error('Error al crear historial de vacunación');
+    error.statusCode = err.number === 50001 ? 400 : 500;
+    error.data = err.message;
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -253,8 +358,6 @@ router.post(
  *   put:
  *     summary: Actualizar un historial de vacunación
  *     tags: [Vaccinations]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -262,6 +365,7 @@ router.post(
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: ID del historial de vacunación
  *     requestBody:
  *       required: true
  *       content:
@@ -278,30 +382,47 @@ router.post(
  *       500:
  *         description: Error interno del servidor
  */
-router.put(
-  '/:id',
-  [authenticate, checkRole(['doctor', 'administrador']), validateUUID, validateVaccination],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_historial', sql.UniqueIdentifier, req.params.id)
-        .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
-        .input('id_lote', sql.UniqueIdentifier, req.body.id_lote)
-        .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
-        .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
-        .input('fecha_vacunacion', sql.DateTime2, req.body.fecha_vacunacion)
-        .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
-        .input('sitio_aplicacion', sql.NVarChar, req.body.sitio_aplicacion)
-        .input('observaciones', sql.NVarChar, req.body.observaciones)
-        .query('UPDATE Historial_Vacunacion SET id_niño = @id_niño, id_lote = @id_lote, id_personal = @id_personal, id_centro = @id_centro, fecha_vacunacion = @fecha_vacunacion, dosis_aplicada = @dosis_aplicada, sitio_aplicacion = @sitio_aplicacion, observaciones = @observaciones WHERE id_historial = @id_historial'); // Nota: No hay stored procedure, usar UPDATE directo
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+router.put('/:id', [validateUUID, validateVaccination], async (req, res, next) => {
+  try {
+    logger.info('Actualizando historial de vacunación', { id: req.params.id, id_niño: req.body.id_niño, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_historial', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Historial_Vacunacion WHERE id_historial = @id_historial');
+    if (exists.recordset.length === 0) {
+      logger.warn('Historial no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('Historial no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_historial', sql.UniqueIdentifier, req.params.id)
+      .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
+      .input('id_lote', sql.UniqueIdentifier, req.body.id_lote)
+      .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
+      .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+      .input('fecha_vacunacion', sql.DateTime2, req.body.fecha_vacunacion)
+      .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
+      .input('sitio_aplicacion', sql.NVarChar, req.body.sitio_aplicacion)
+      .input('observaciones', sql.NVarChar, req.body.observaciones)
+      .execute('sp_ActualizarHistorialVacunacion');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al actualizar historial de vacunación', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
-);
+});
 
 /**
  * @swagger
@@ -309,8 +430,6 @@ router.put(
  *   delete:
  *     summary: Eliminar un historial de vacunación
  *     tags: [Vaccinations]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -318,6 +437,7 @@ router.put(
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: ID del historial de vacunación
  *     responses:
  *       204:
  *         description: Historial eliminado exitosamente
@@ -328,68 +448,36 @@ router.put(
  *       500:
  *         description: Error interno del servidor
  */
-router.delete(
-  '/:id',
-  [authenticate, checkRole(['doctor', 'administrador']), validateUUID],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_historial', sql.UniqueIdentifier, req.params.id)
-        .query('DELETE FROM Historial_Vacunacion WHERE id_historial = @id_historial'); // Nota: No hay stored procedure, usar DELETE directo
-      res.status(204).send();
-    } catch (err) {
-      next(err);
-    }
-  }
-);
-
-/**
- * @swagger
- * /api/vaccination-history/{id}:
- *   get:
- *     summary: Obtener el historial de vacunación por ID de niño
- *     tags: [Vaccinations]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       200:
- *         description: Historial obtenido exitosamente
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/VaccinationHistory'
- *       400:
- *         description: ID inválido
- *       404:
- *         description: Historial no encontrado
- *       500:
- *         description: Error interno del servidor
- */
-router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID], async (req, res, next) => {
+router.delete('/:id', validateUUID, async (req, res, next) => {
   try {
+    logger.info('Eliminando historial de vacunación', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
     const pool = await poolPromise;
-    const result = await pool
+    const exists = await pool
       .request()
-      .input('id_niño', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_ObtenerHistorialVacunacion');
-    if (result.recordset.length === 0) {
+      .input('id_historial', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Historial_Vacunacion WHERE id_historial = @id_historial');
+    if (exists.recordset.length === 0) {
+      logger.warn('Historial no encontrado', { id: req.params.id, ip: req.ip });
       const error = new Error('Historial no encontrado');
       error.statusCode = 404;
       throw error;
     }
-    res.status(200).json(result.recordset);
+    await pool
+      .request()
+      .input('id_historial', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_EliminarHistorialVacunacion');
+    res.status(204).send();
   } catch (err) {
+    logger.error('Error al eliminar historial de vacunación', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
     next(err);
   }
 });

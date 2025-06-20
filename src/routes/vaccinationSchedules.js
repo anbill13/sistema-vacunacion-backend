@@ -1,10 +1,31 @@
 const express = require('express');
-const { body, param } = require('express-validator');
-const { authenticate, checkRole } = require('../middleware/auth');
+const { body, param, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
-const { logger } = require('../config/db');
+const winston = require('winston');
 
 const router = express.Router();
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
+
+const validateVaccinationSchedule = [
+  body('id_vacuna').isUUID().withMessage('ID de vacuna inválido'),
+  body('orden_dosis').isInt({ min: 1 }).withMessage('Orden de dosis debe ser un número positivo'),
+  body('edad_recomendada').notEmpty().isString().withMessage('Edad recomendada es requerida'),
+  body('descripcion').optional().isString().withMessage('Descripción debe ser una cadena válida'),
+];
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
 /**
  * @swagger
@@ -41,6 +62,12 @@ const router = express.Router();
  *         descripcion:
  *           type: string
  *           description: Descripción del esquema (opcional)
+ *       example:
+ *         id_esquema: "123e4567-e89b-12d3-a456-426614174016"
+ *         id_vacuna: "123e4567-e89b-12d3-a456-426614174008"
+ *         orden_dosis: 1
+ *         edad_recomendada: "2 meses"
+ *         descripcion: "Primera dosis de la vacuna contra la hepatitis B"
  *     VaccinationScheduleInput:
  *       type: object
  *       required:
@@ -60,23 +87,12 @@ const router = express.Router();
  *           nullable: true
  */
 
-const validateVaccinationSchedule = [
-  body('id_vacuna').isUUID().withMessage('ID de vacuna inválido'),
-  body('orden_dosis').isInt({ min: 1 }).withMessage('Orden de dosis debe ser un número positivo'),
-  body('edad_recomendada').notEmpty().isString().withMessage('Edad recomendada es requerida'),
-  body('descripcion').optional().isString(),
-];
-
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-
 /**
  * @swagger
  * /api/vaccination-schedules:
  *   get:
  *     summary: Listar todos los esquemas de vacunación
  *     tags: [VaccinationSchedules]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Lista de esquemas obtenida exitosamente
@@ -89,13 +105,17 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/', [authenticate, checkRole(['director', 'administrador'])], async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
+    logger.info('Obteniendo esquemas de vacunación', { ip: req.ip });
     const pool = await poolPromise;
     const result = await pool.request().query('SELECT * FROM Esquema_Vacunacion');
     res.status(200).json(result.recordset);
   } catch (err) {
-    next(err);
+    logger.error('Error al obtener esquemas de vacunación', { error: err.message, ip: req.ip });
+    const error = new Error('Error al obtener esquemas de vacunación');
+    error.statusCode = 500;
+    next(error);
   }
 });
 
@@ -105,8 +125,6 @@ router.get('/', [authenticate, checkRole(['director', 'administrador'])], async 
  *   get:
  *     summary: Obtener un esquema de vacunación por ID
  *     tags: [VaccinationSchedules]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -128,20 +146,32 @@ router.get('/', [authenticate, checkRole(['director', 'administrador'])], async 
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID], async (req, res, next) => {
+router.get('/:id', validateUUID, async (req, res, next) => {
   try {
+    logger.info('Obteniendo esquema de vacunación por ID', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
     const pool = await poolPromise;
     const result = await pool
       .request()
       .input('id_esquema', sql.UniqueIdentifier, req.params.id)
       .query('SELECT * FROM Esquema_Vacunacion WHERE id_esquema = @id_esquema');
     if (result.recordset.length === 0) {
+      logger.warn('Esquema no encontrado', { id: req.params.id, ip: req.ip });
       const error = new Error('Esquema no encontrado');
       error.statusCode = 404;
       throw error;
     }
     res.status(200).json(result.recordset[0]);
   } catch (err) {
+    logger.error('Error al obtener esquema de vacunación', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
     next(err);
   }
 });
@@ -152,8 +182,6 @@ router.get('/:id', [authenticate, checkRole(['director', 'administrador']), vali
  *   post:
  *     summary: Crear un nuevo esquema de vacunación
  *     tags: [VaccinationSchedules]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -176,25 +204,34 @@ router.get('/:id', [authenticate, checkRole(['director', 'administrador']), vali
  *       500:
  *         description: Error interno del servidor
  */
-router.post(
-  '/',
-  [authenticate, checkRole(['director', 'administrador']), validateVaccinationSchedule],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('id_vacuna', sql.UniqueIdentifier, req.body.id_vacuna)
-        .input('orden_dosis', sql.Int, req.body.orden_dosis)
-        .input('edad_recomendada', sql.NVarChar, req.body.edad_recomendada)
-        .input('descripcion', sql.NVarChar, req.body.descripcion)
-        .execute('sp_CrearEsquemaVacunacion');
-      res.status(201).json({ id_esquema: result.recordset[0].id_esquema });
-    } catch (err) {
-      next(err);
+router.post('/', validateVaccinationSchedule, async (req, res, next) => {
+  try {
+    logger.info('Creando esquema de vacunación', { id_vacuna: req.body.id_vacuna, orden_dosis: req.body.orden_dosis, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_vacuna', sql.UniqueIdentifier, req.body.id_vacuna)
+      .input('orden_dosis', sql.Int, req.body.orden_dosis)
+      .input('edad_recomendada', sql.NVarChar, req.body.edad_recomendada)
+      .input('descripcion', sql.NVarChar, req.body.descripcion)
+      .execute('sp_CrearEsquemaVacunacion');
+    res.status(201).json({ id_esquema: result.recordset[0].id_esquema });
+  } catch (err) {
+    logger.error('Error al crear esquema de vacunación', { error: err.message, ip: req.ip });
+    const error = new Error('Error al crear esquema de vacunación');
+    error.statusCode = err.number === 50001 ? 400 : 500;
+    error.data = err.message;
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -202,8 +239,6 @@ router.post(
  *   put:
  *     summary: Actualizar un esquema de vacunación
  *     tags: [VaccinationSchedules]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -227,26 +262,43 @@ router.post(
  *       500:
  *         description: Error interno del servidor
  */
-router.put(
-  '/:id',
-  [authenticate, checkRole(['director', 'administrador']), validateUUID, validateVaccinationSchedule],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_esquema', sql.UniqueIdentifier, req.params.id)
-        .input('id_vacuna', sql.UniqueIdentifier, req.body.id_vacuna)
-        .input('orden_dosis', sql.Int, req.body.orden_dosis)
-        .input('edad_recomendada', sql.NVarChar, req.body.edad_recomendada)
-        .input('descripcion', sql.NVarChar, req.body.descripcion)
-        .execute('sp_ActualizarEsquemaVacunacion');
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+router.put('/:id', [validateUUID, validateVaccinationSchedule], async (req, res, next) => {
+  try {
+    logger.info('Actualizando esquema de vacunación', { id: req.params.id, id_vacuna: req.body.id_vacuna, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_esquema', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Esquema_Vacunacion WHERE id_esquema = @id_esquema');
+    if (exists.recordset.length === 0) {
+      logger.warn('Esquema no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('Esquema no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_esquema', sql.UniqueIdentifier, req.params.id)
+      .input('id_vacuna', sql.UniqueIdentifier, req.body.id_vacuna)
+      .input('orden_dosis', sql.Int, req.body.orden_dosis)
+      .input('edad_recomendada', sql.NVarChar, req.body.edad_recomendada)
+      .input('descripcion', sql.NVarChar, req.body.descripcion)
+      .execute('sp_ActualizarEsquemaVacunacion');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al actualizar esquema de vacunación', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
-);
+});
 
 /**
  * @swagger
@@ -254,8 +306,6 @@ router.put(
  *   delete:
  *     summary: Eliminar un esquema de vacunación
  *     tags: [VaccinationSchedules]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -273,21 +323,38 @@ router.put(
  *       500:
  *         description: Error interno del servidor
  */
-router.delete(
-  '/:id',
-  [authenticate, checkRole(['director', 'administrador']), validateUUID],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_esquema', sql.UniqueIdentifier, req.params.id)
-        .query('DELETE FROM Esquema_Vacunacion WHERE id_esquema = @id_esquema'); // Nota: No hay stored procedure, usar DELETE directo
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+router.delete('/:id', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Eliminando esquema de vacunación', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_esquema', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Esquema_Vacunacion WHERE id_esquema = @id_esquema');
+    if (exists.recordset.length === 0) {
+      logger.warn('Esquema no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('Esquema no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_esquema', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_EliminarEsquemaVacunacion');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al eliminar esquema de vacunación', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
-);
+});
 
 module.exports = router;

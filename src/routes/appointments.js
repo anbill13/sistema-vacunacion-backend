@@ -1,10 +1,36 @@
 const express = require('express');
-const { body, param, query } = require('express-validator');
-const { authenticate, checkRole } = require('../middleware/auth');
+const { body, param, query, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
-const { logger } = require('../config/db');
+const winston = require('winston');
 
 const router = express.Router();
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
+
+const validateAppointment = [
+  body('id_niño').isUUID().withMessage('ID de niño inválido'),
+  body('id_centro').isUUID().withMessage('ID de centro inválido'),
+  body('fecha_cita').isISO8601().withMessage('Fecha de cita inválida'),
+  body('estado').isIn(['Pendiente', 'Confirmada', 'Cancelada', 'Completada']).withMessage('Estado inválido'),
+];
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
+
+const validateDateRange = [
+  query('fecha_inicio').isDate().withMessage('Fecha de inicio inválida'),
+  query('fecha_fin').isDate().withMessage('Fecha de fin inválida'),
+];
 
 /**
  * @swagger
@@ -48,6 +74,13 @@ const router = express.Router();
  *         nombre_niño:
  *           type: string
  *           description: Nombre del niño (en reportes)
+ *       example:
+ *         id_cita: "123e4567-e89b-12d3-a456-426614174013"
+ *         id_niño: "123e4567-e89b-12d3-a456-426614174006"
+ *         id_centro: "123e4567-e89b-12d3-a456-426614174007"
+ *         fecha_cita: "2025-06-25T10:00:00Z"
+ *         estado: "Pendiente"
+ *         nombre_niño: "Ana López"
  *     AppointmentInput:
  *       type: object
  *       required:
@@ -70,23 +103,12 @@ const router = express.Router();
  *           enum: [Pendiente, Confirmada, Cancelada, Completada]
  */
 
-const validateAppointment = [
-  body('id_niño').isUUID().withMessage('ID de niño inválido'),
-  body('id_centro').isUUID().withMessage('ID de centro inválido'),
-  body('fecha_cita').isISO8601().withMessage('Fecha de cita inválida'),
-  body('estado').isIn(['Pendiente', 'Confirmada', 'Cancelada', 'Completada']).withMessage('Estado inválido'),
-];
-
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-
 /**
  * @swagger
  * /api/appointments:
  *   get:
  *     summary: Listar todas las citas
  *     tags: [Appointments]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Lista de citas obtenida exitosamente
@@ -99,13 +121,17 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
+    logger.info('Obteniendo citas', { ip: req.ip });
     const pool = await poolPromise;
     const result = await pool.request().query('SELECT * FROM Citas');
     res.status(200).json(result.recordset);
   } catch (err) {
-    next(err);
+    logger.error('Error al obtener citas', { error: err.message, ip: req.ip });
+    const error = new Error('Error al obtener citas');
+    error.statusCode = 500;
+    next(error);
   }
 });
 
@@ -115,8 +141,6 @@ router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (r
  *   get:
  *     summary: Obtener una cita por ID
  *     tags: [Appointments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -138,20 +162,32 @@ router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (r
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID], async (req, res, next) => {
+router.get('/:id', validateUUID, async (req, res, next) => {
   try {
+    logger.info('Obteniendo cita por ID', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
     const pool = await poolPromise;
     const result = await pool
       .request()
       .input('id_cita', sql.UniqueIdentifier, req.params.id)
       .query('SELECT * FROM Citas WHERE id_cita = @id_cita');
     if (result.recordset.length === 0) {
+      logger.warn('Cita no encontrada', { id: req.params.id, ip: req.ip });
       const error = new Error('Cita no encontrada');
       error.statusCode = 404;
       throw error;
     }
     res.status(200).json(result.recordset[0]);
   } catch (err) {
+    logger.error('Error al obtener cita', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
     next(err);
   }
 });
@@ -162,8 +198,6 @@ router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), valida
  *   post:
  *     summary: Crear una nueva cita
  *     tags: [Appointments]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -186,25 +220,34 @@ router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), valida
  *       500:
  *         description: Error interno del servidor
  */
-router.post(
-  '/',
-  [authenticate, checkRole(['doctor', 'administrador']), validateAppointment],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
-        .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
-        .input('fecha_cita', sql.DateTime2, req.body.fecha_cita)
-        .input('estado', sql.NVarChar, req.body.estado)
-        .execute('sp_CrearCita');
-      res.status(201).json({ id_cita: result.recordset[0].id_cita });
-    } catch (err) {
-      next(err);
+router.post('/', validateAppointment, async (req, res, next) => {
+  try {
+    logger.info('Creando cita', { id_niño: req.body.id_niño, id_centro: req.body.id_centro, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
+      .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+      .input('fecha_cita', sql.DateTime2, req.body.fecha_cita)
+      .input('estado', sql.NVarChar, req.body.estado)
+      .execute('sp_CrearCita');
+    res.status(201).json({ id_cita: result.recordset[0].id_cita });
+  } catch (err) {
+    logger.error('Error al crear cita', { error: err.message, ip: req.ip });
+    const error = new Error('Error al crear cita');
+    error.statusCode = err.number === 50001 ? 400 : 500;
+    error.data = err.message;
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -212,8 +255,6 @@ router.post(
  *   put:
  *     summary: Actualizar una cita
  *     tags: [Appointments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -237,26 +278,43 @@ router.post(
  *       500:
  *         description: Error interno del servidor
  */
-router.put(
-  '/:id',
-  [authenticate, checkRole(['doctor', 'administrador']), validateUUID, validateAppointment],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_cita', sql.UniqueIdentifier, req.params.id)
-        .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
-        .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
-        .input('fecha_cita', sql.DateTime2, req.body.fecha_cita)
-        .input('estado', sql.NVarChar, req.body.estado)
-        .execute('sp_ActualizarCita');
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+router.put('/:id', [validateUUID, validateAppointment], async (req, res, next) => {
+  try {
+    logger.info('Actualizando cita', { id: req.params.id, id_niño: req.body.id_niño, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_cita', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Citas WHERE id_cita = @id_cita');
+    if (exists.recordset.length === 0) {
+      logger.warn('Cita no encontrada', { id: req.params.id, ip: req.ip });
+      const error = new Error('Cita no encontrada');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_cita', sql.UniqueIdentifier, req.params.id)
+      .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
+      .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+      .input('fecha_cita', sql.DateTime2, req.body.fecha_cita)
+      .input('estado', sql.NVarChar, req.body.estado)
+      .execute('sp_ActualizarCita');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al actualizar cita', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
-);
+});
 
 /**
  * @swagger
@@ -264,8 +322,6 @@ router.put(
  *   delete:
  *     summary: Eliminar una cita
  *     tags: [Appointments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -283,22 +339,39 @@ router.put(
  *       500:
  *         description: Error interno del servidor
  */
-router.delete(
-  '/:id',
-  [authenticate, checkRole(['doctor', 'administrador']), validateUUID],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_cita', sql.UniqueIdentifier, req.params.id)
-        .query('DELETE FROM Citas WHERE id_cita = @id_cita'); // Nota: No hay stored procedure, usar DELETE directo
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+router.delete('/:id', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Eliminando cita', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_cita', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Citas WHERE id_cita = @id_cita');
+    if (exists.recordset.length === 0) {
+      logger.warn('Cita no encontrada', { id: req.params.id, ip: req.ip });
+      const error = new Error('Cita no encontrada');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_cita', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_EliminarCita');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al eliminar cita', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
-);
+});
 
 /**
  * @swagger
@@ -306,8 +379,6 @@ router.delete(
  *   get:
  *     summary: Obtener citas por centro y rango de fechas
  *     tags: [Appointments]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -344,29 +415,30 @@ router.delete(
  *       500:
  *         description: Error interno del servidor
  */
-router.get(
-  '/center/:id',
-  [
-    authenticate,
-    checkRole(['doctor', 'administrador']),
-    validateUUID,
-    query('fecha_inicio').isDate().withMessage('Fecha de inicio inválida'),
-    query('fecha_fin').isDate().withMessage('Fecha de fin inválida'),
-  ],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('id_centro', sql.UniqueIdentifier, req.params.id)
-        .input('fecha_inicio', sql.Date, req.query.fecha_inicio)
-        .input('fecha_fin', sql.Date, req.query.fecha_fin)
-        .execute('sp_ObtenerCitasPorCentro');
-      res.status(200).json(result.recordset);
-    } catch (err) {
-      next(err);
+router.get('/center/:id', [validateUUID, validateDateRange], async (req, res, next) => {
+  try {
+    logger.info('Obteniendo citas por centro y rango de fechas', { id_centro: req.params.id, fecha_inicio: req.query.fecha_inicio, fecha_fin: req.query.fecha_fin, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_centro', sql.UniqueIdentifier, req.params.id)
+      .input('fecha_inicio', sql.Date, req.query.fecha_inicio)
+      .input('fecha_fin', sql.Date, req.query.fecha_fin)
+      .execute('sp_ObtenerCitasPorCentro');
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    logger.error('Error al obtener citas por centro', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
-);
+});
 
 module.exports = router;

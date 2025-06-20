@@ -1,8 +1,33 @@
 const express = require('express');
-const router = express.Router();
+const { body, param, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
-const { authenticate, checkRole } = require('../middleware/auth');
-const { param, body } = require('express-validator');
+const winston = require('winston');
+
+const router = express.Router();
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
+
+const validateSupplyUsage = [
+  body('id_suministro').isUUID().withMessage('ID de suministro inválido'),
+  body('id_personal').isUUID().withMessage('ID de personal inválido'),
+  body('fecha_uso').isISO8601().withMessage('Fecha de uso inválida'),
+  body('cantidad').isFloat({ min: 0 }).withMessage('Cantidad debe ser un número positivo'),
+  body('descripcion').optional().isString().withMessage('Descripción debe ser una cadena válida'),
+  body('estado').isIn(['Registrado', 'Anulado']).withMessage('Estado inválido'),
+];
 
 /**
  * @swagger
@@ -44,6 +69,14 @@ const { param, body } = require('express-validator');
  *         - fecha_uso
  *         - cantidad
  *         - estado
+ *       example:
+ *         id_uso: "123e4567-e89b-12d3-a456-426614174021"
+ *         id_suministro: "123e4567-e89b-12d3-a456-426614174015"
+ *         id_personal: "123e4567-e89b-12d3-a456-426614174005"
+ *         fecha_uso: "2025-06-20T14:00:00Z"
+ *         cantidad: 10
+ *         descripcion: "Uso de jeringas para campaña de vacunación"
+ *         estado: "Registrado"
  *     SupplyUsageInput:
  *       type: object
  *       properties:
@@ -71,25 +104,12 @@ const { param, body } = require('express-validator');
  *         - estado
  */
 
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-
-const validateSupplyUsage = [
-  body('id_suministro').isUUID().withMessage('ID de suministro inválido'),
-  body('id_personal').isUUID().withMessage('ID de personal inválido'),
-  body('fecha_uso').isISO8601().withMessage('Fecha de uso inválida'),
-  body('cantidad').isFloat({ min: 0 }).withMessage('Cantidad debe ser un número positivo'),
-  body('descripcion').optional().isString().withMessage('Descripción debe ser una cadena'),
-  body('estado').isIn(['Registrado', 'Anulado']).withMessage('Estado inválido'),
-];
-
 /**
  * @swagger
  * /api/supply-usage:
  *   get:
  *     summary: Retrieve all supply usage records
  *     tags: [SupplyUsage]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: A list of supply usage records
@@ -102,14 +122,18 @@ const validateSupplyUsage = [
  *       500:
  *         description: Internal server error
  */
-router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request().execute('sp_ListarUsosSuministros');
-        res.json(result.recordset);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+router.get('/', async (req, res, next) => {
+  try {
+    logger.info('Obteniendo usos de suministros', { ip: req.ip });
+    const pool = await poolPromise;
+    const result = await pool.request().execute('sp_ListarUsosSuministros');
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    logger.error('Error al obtener usos de suministros', { error: err.message, ip: req.ip });
+    const error = new Error('Error al obtener usos de suministros');
+    error.statusCode = 500;
+    next(error);
+  }
 });
 
 /**
@@ -118,8 +142,6 @@ router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (r
  *   get:
  *     summary: Retrieve a supply usage record by ID
  *     tags: [SupplyUsage]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -135,25 +157,41 @@ router.get('/', [authenticate, checkRole(['doctor', 'administrador'])], async (r
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/SupplyUsage'
+ *       400:
+ *         description: Invalid ID
  *       404:
  *         description: Supply usage record not found
  *       500:
  *         description: Internal server error
  */
-router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID], async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('id_uso', sql.UniqueIdentifier, req.params.id)
-            .execute('sp_ObtenerUsoSuministroPorId');
-        if (result.recordset.length > 0) {
-            res.json(result.recordset[0]);
-        } else {
-            res.status(404).json({ error: 'Uso de suministro no encontrado' });
-        }
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+router.get('/:id', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Obteniendo uso de suministro por ID', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_uso', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_ObtenerUsoSuministroPorId');
+    if (result.recordset.length === 0) {
+      logger.warn('Uso de suministro no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('Uso de suministro no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json(result.recordset[0]);
+  } catch (err) {
+    logger.error('Error al obtener uso de suministro', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
 });
 
 /**
@@ -162,8 +200,6 @@ router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), valida
  *   post:
  *     summary: Create a new supply usage record
  *     tags: [SupplyUsage]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -186,21 +222,35 @@ router.get('/:id', [authenticate, checkRole(['doctor', 'administrador']), valida
  *       500:
  *         description: Internal server error
  */
-router.post('/', [authenticate, checkRole(['doctor', 'administrador']), validateSupplyUsage], async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('id_suministro', sql.UniqueIdentifier, req.body.id_suministro)
-            .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
-            .input('fecha_uso', sql.DateTime2, req.body.fecha_uso)
-            .input('cantidad', sql.Float, req.body.cantidad)
-            .input('descripcion', sql.NVarChar, req.body.descripcion)
-            .input('estado', sql.NVarChar, req.body.estado)
-            .execute('sp_CrearUsoSuministro');
-        res.status(201).json({ id_uso: result.recordset[0].id_uso });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+router.post('/', validateSupplyUsage, async (req, res, next) => {
+  try {
+    logger.info('Creando uso de suministro', { id_suministro: req.body.id_suministro, cantidad: req.body.cantidad, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_suministro', sql.UniqueIdentifier, req.body.id_suministro)
+      .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
+      .input('fecha_uso', sql.DateTime2, req.body.fecha_uso)
+      .input('cantidad', sql.Float, req.body.cantidad)
+      .input('descripcion', sql.NVarChar, req.body.descripcion)
+      .input('estado', sql.NVarChar, req.body.estado)
+      .execute('sp_CrearUsoSuministro');
+    res.status(201).json({ id_uso: result.recordset[0].id_uso });
+  } catch (err) {
+    logger.error('Error al crear uso de suministro', { error: err.message, ip: req.ip });
+    const error = new Error('Error al crear uso de suministro');
+    error.statusCode = err.number === 50001 ? 400 : 500;
+    error.data = err.message;
+    next(error);
+  }
 });
 
 /**
@@ -209,8 +259,6 @@ router.post('/', [authenticate, checkRole(['doctor', 'administrador']), validate
  *   put:
  *     summary: Update an existing supply usage record
  *     tags: [SupplyUsage]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -226,7 +274,7 @@ router.post('/', [authenticate, checkRole(['doctor', 'administrador']), validate
  *           schema:
  *             $ref: '#/components/schemas/SupplyUsageInput'
  *     responses:
- *       200:
+ *       204:
  *         description: Supply usage record updated successfully
  *       400:
  *         description: Bad request (e.g., missing required fields)
@@ -235,25 +283,44 @@ router.post('/', [authenticate, checkRole(['doctor', 'administrador']), validate
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID, validateSupplyUsage], async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('id_uso', sql.UniqueIdentifier, req.params.id)
-            .input('id_suministro', sql.UniqueIdentifier, req.body.id_suministro)
-            .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
-            .input('fecha_uso', sql.DateTime2, req.body.fecha_uso)
-            .input('cantidad', sql.Float, req.body.cantidad)
-            .input('descripcion', sql.NVarChar, req.body.descripcion)
-            .input('estado', sql.NVarChar, req.body.estado)
-            .execute('sp_ActualizarUsoSuministro');
-        if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ error: 'Uso de suministro no encontrado' });
-        }
-        res.status(200).json({ message: 'Uso de suministro actualizado' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+router.put('/:id', [validateUUID, validateSupplyUsage], async (req, res, next) => {
+  try {
+    logger.info('Actualizando uso de suministro', { id: req.params.id, id_suministro: req.body.id_suministro, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_uso', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Uso_Suministros WHERE id_uso = @id_uso');
+    if (exists.recordset.length === 0) {
+      logger.warn('Uso de suministro no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('Uso de suministro no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_uso', sql.UniqueIdentifier, req.params.id)
+      .input('id_suministro', sql.UniqueIdentifier, req.body.id_suministro)
+      .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
+      .input('fecha_uso', sql.DateTime2, req.body.fecha_uso)
+      .input('cantidad', sql.Float, req.body.cantidad)
+      .input('descripcion', sql.NVarChar, req.body.descripcion)
+      .input('estado', sql.NVarChar, req.body.estado)
+      .execute('sp_ActualizarUsoSuministro');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al actualizar uso de suministro', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
 });
 
 /**
@@ -262,8 +329,6 @@ router.put('/:id', [authenticate, checkRole(['doctor', 'administrador']), valida
  *   delete:
  *     summary: Delete a supply usage record
  *     tags: [SupplyUsage]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -273,26 +338,47 @@ router.put('/:id', [authenticate, checkRole(['doctor', 'administrador']), valida
  *           format: uuid
  *         description: The ID of the supply usage record to delete
  *     responses:
- *       200:
+ *       204:
  *         description: Supply usage record deleted successfully
+ *       400:
+ *         description: Invalid ID
  *       404:
  *         description: Supply usage record not found
  *       500:
  *         description: Internal server error
  */
-router.delete('/:id', [authenticate, checkRole(['doctor', 'administrador']), validateUUID], async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('id_uso', sql.UniqueIdentifier, req.params.id)
-            .execute('sp_EliminarUsoSuministro');
-        if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ error: 'Uso de suministro no encontrado' });
-        }
-        res.status(200).json({ message: 'Uso de suministro eliminado' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+router.delete('/:id', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Eliminando uso de suministro', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_uso', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Uso_Suministros WHERE id_uso = @id_uso');
+    if (exists.recordset.length === 0) {
+      logger.warn('Uso de suministro no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('Uso de suministro no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_uso', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_EliminarUsoSuministro');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al eliminar uso de suministro', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
 });
 
 module.exports = router;

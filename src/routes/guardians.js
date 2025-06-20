@@ -1,315 +1,484 @@
 const express = require('express');
-const { body, param } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
-const { logger } = require('../config/db');
-
 const router = express.Router();
 
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new Error('Validation failed');
+    error.statusCode = 400;
+    error.data = errors.array();
+    return next(error);
+  }
+  next();
+};
 /**
  * @swagger
- * tags:
- *   name: Guardians
- *   description: Gestión de tutores
- */
-
-/**
- * @swagger
- * components:
- *   schemas:
- *     Guardian:
- *       type: object
- *       required:
- *         - id_niño
- *         - nombre
- *         - relacion
- *         - nacionalidad
- *       properties:
- *         id_tutor:
- *           type: string
- *           format: uuid
- *           description: Identificador único del tutor
- *         id_niño:
- *           type: string
- *           format: uuid
- *           description: ID del niño asociado
- *         nombre:
- *           type: string
- *           description: Nombre completo del tutor
- *         relacion:
- *           type: string
- *           enum: [Madre, Padre, Tutor Legal]
- *           description: Relación con el niño
- *         nacionalidad:
- *           type: string
- *           format: uuid
- *           description: ID del país de nacionalidad
- *         identificacion:
- *           type: string
- *           description: Identificación del tutor (opcional)
- *         telefono:
- *           type: string
- *           description: Teléfono del tutor (opcional)
- *         email:
- *           type: string
- *           description: Email del tutor (opcional)
- *         direccion:
- *           type: string
- *           description: Dirección del tutor (opcional)
- *         estado:
- *           type: string
- *           enum: [Activo, Inactivo]
- *           description: Estado del tutor
- *     GuardianInput:
- *       type: object
- *       required:
- *         - id_niño
- *         - nombre
- *         - relacion
- *         - nacionalidad
- *       properties:
- *         id_niño:
- *           type: string
- *           format: uuid
- *         nombre:
- *           type: string
- *         relacion:
- *           type: string
- *           enum: [Madre, Padre, Tutor Legal]
- *         nacionalidad:
- *           type: string
- *           format: uuid
- *         identificacion:
- *           type: string
- *           nullable: true
- *         telefono:
- *           type: string
- *           nullable: true
- *         email:
- *           type: string
- *           nullable: true
- *         direccion:
- *           type: string
- *           nullable: true
- */
-
-const validateGuardian = [
-  body('id_niño').isUUID().withMessage('ID de niño inválido'),
-  body('nombre').notEmpty().isString().withMessage('Nombre es requerido'),
-  body('relacion').isIn(['Madre', 'Padre', 'Tutor Legal']).withMessage('Relación inválida'),
-  body('nacionalidad').isUUID().withMessage('Nacionalidad inválida'),
-  body('identificacion').optional().isString(),
-  body('telefono').optional().isString(),
-  body('email').optional().isEmail().withMessage('Email inválido'),
-  body('direccion').optional().isString(),
-];
-
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-
-/**
- * @swagger
- * /api/guardians:
+ * /api/children:
  *   get:
- *     summary: Listar todos los tutores
- *     tags: [Guardians]
+ *     summary: Obtiene todos los niños
+ *     tags: [Children]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de tutores obtenida exitosamente
+ *         description: Lista de niños
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Guardian'
- *       500:
- *         description: Error interno del servidor
+ *                 type: object
+ *                 properties:
+ *                   id_niño:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440000"
+ *                   nombre_completo:
+ *                     type: string
+ *                     example: "Juan Pérez"
+ *                   identificacion:
+ *                     type: string
+ *                     example: "001-1234567-8"
+ *                   nacionalidad:
+ *                     type: string
+ *                     enum: [Dominicano, Extranjero]
+ *                     example: "Dominicano"
+ *                   fecha_nacimiento:
+ *                     type: string
+ *                     format: date
+ *                     example: "2015-05-15"
+ *                   genero:
+ *                     type: string
+ *                     enum: [M, F, O]
+ *                     example: "M"
+ *                   id_centro_salud:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "550e8400-e29b-41d4-a716-446655440001"
+ *                   contacto_principal:
+ *                     type: string
+ *                     enum: [Madre, Padre, Tutor]
+ *                     example: "Madre"
  */
-router.get('/', async (req, res, next) => {
-  try {
-    const pool = await poolPromise;
-    const result = await pool.request().query('SELECT * FROM Tutores');
-    res.status(200).json(result.recordset);
-  } catch (err) {
-    next(err);
+router.get(
+  '/',
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .execute('sp_ObtenerTodosNinos');
+
+      res.json(result.recordset);
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
- * /api/guardians/{id}:
+ * tags:
+ *   name: Children
+ *   description: Gestión de niños
+ */
+
+/**
+ * @swagger
+ * /api/children/{id}:
  *   get:
- *     summary: Obtener un tutor por ID
- *     tags: [Guardians]
+ *     summary: Obtiene un niño por ID
+ *     tags: [Children]
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
  *         schema:
  *           type: string
  *           format: uuid
+ *           example: "550e8400-e29b-41d4-a716-446655440000"
  *     responses:
  *       200:
- *         description: Tutor obtenido exitosamente
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Guardian'
- *       400:
- *         description: ID inválido
- *       404:
- *         description: Tutor no encontrado
- *       500:
- *         description: Error interno del servidor
- */
-router.get('/:id', [validateUUID], async (req, res, next) => {
-  try {
-    const pool = await poolPromise;
-    const result = await pool
-      .request()
-      .input('id_tutor', sql.UniqueIdentifier, req.params.id)
-      .query('SELECT * FROM Tutores WHERE id_tutor = @id_tutor');
-    if (result.recordset.length === 0) {
-      const error = new Error('Tutor no encontrado');
-      error.statusCode = 404;
-      throw error;
-    }
-    res.status(200).json(result.recordset[0]);
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/guardians:
- *   post:
- *     summary: Crear un nuevo tutor
- *     tags: [Guardians]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/GuardianInput'
- *     responses:
- *       201:
- *         description: Tutor creado exitosamente
+ *         description: Niño encontrado
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 id_tutor:
+ *                 id_niño:
  *                   type: string
  *                   format: uuid
- *       400:
- *         description: Error en los datos enviados
- *       500:
- *         description: Error interno del servidor
+ *                   example: "550e8400-e29b-41d4-a716-446655440000"
+ *                 nombre_completo:
+ *                   type: string
+ *                   example: "Juan Pérez"
+ *                 identificacion:
+ *                   type: string
+ *                   example: "001-1234567-8"
+ *                 nacionalidad:
+ *                   type: string
+ *                   enum: [Dominicano, Extranjero]
+ *                   example: "Dominicano"
+ *                 fecha_nacimiento:
+ *                   type: string
+ *                   format: date
+ *                   example: "2015-05-15"
+ *                 genero:
+ *                   type: string
+ *                   enum: [M, F, O]
+ *                   example: "M"
+ *                 id_centro_salud:
+ *                   type: string
+ *                   format: uuid
+ *                   example: "550e8400-e29b-41d4-a716-446655440001"
+ *                 contacto_principal:
+ *                   type: string
+ *                   enum: [Madre, Padre, Tutor]
+ *                   example: "Madre"
+ *       404:
+ *         description: Niño no encontrado
  */
-router.post('/', validateGuardian, async (req, res, next) => {
-  try {
-    const pool = await poolPromise;
-    const result = await pool
-      .request()
-      .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
-      .input('nombre', sql.NVarChar, req.body.nombre)
-      .input('identificacion', sql.NVarChar, req.body.identificacion)
-      .input('relacion', sql.NVarChar, req.body.relacion)
-      .input('telefono', sql.NVarChar, req.body.telefono)
-      .input('email', sql.NVarChar, req.body.email)
-      .input('direccion', sql.NVarChar, req.body.direccion)
-      .input('nacionalidad', sql.UniqueIdentifier, req.body.nacionalidad)
-      .execute('sp_CrearTutor');
-    res.status(201).json({ id_tutor: result.recordset[0].id_tutor });
-  } catch (err) {
-    next(err);
+router.get(
+  '/:id',
+  [param('id').isUUID().withMessage('Invalid UUID')],
+  validate,
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('id_niño', sql.UniqueIdentifier, req.params.id)
+        .execute('sp_ObtenerNino');
+
+      if (result.recordset.length === 0) {
+        const error = new Error('Child not found');
+        error.statusCode = 404;
+        throw error;
+      }
+      res.json(result.recordset[0]);
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
- * /api/guardians/{id}:
- *   put:
- *     summary: Actualizar un tutor
- *     tags: [Guardians]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
+ * /api/children:
+ *   post:
+ *     summary: Crea un nuevo niño
+ *     tags: [Children]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/GuardianInput'
+ *             type: object
+ *             properties:
+ *               nombre_completo:
+ *                 type: string
+ *                 example: "Juan Pérez"
+ *               identificacion:
+ *                 type: string
+ *                 example: "001-1234567-8"
+ *               nacionalidad:
+ *                 type: string
+ *                 enum: [Dominicano, Extranjero]
+ *                 example: "Dominicano"
+ *               pais_nacimiento:
+ *                 type: string
+ *                 example: "República Dominicana"
+ *               fecha_nacimiento:
+ *                 type: string
+ *                 format: date
+ *                 example: "2015-05-15"
+ *               genero:
+ *                 type: string
+ *                 enum: [M, F, O]
+ *                 example: "M"
+ *               direccion_residencia:
+ *                 type: string
+ *                 example: "Calle 2, Santo Domingo"
+ *               latitud:
+ *                 type: number
+ *                 format: float
+ *                 example: 18.4861
+ *               longitud:
+ *                 type: number
+ *                 format: float
+ *                 example: -69.9312
+ *               id_centro_salud:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440001"
+ *               contacto_principal:
+ *                 type: string
+ *                 enum: [Madre, Padre, Tutor]
+ *                 example: "Madre"
+ *               id_salud_nacional:
+ *                 type: string
+ *                 example: "SN001"
  *     responses:
- *       204:
- *         description: Tutor actualizado exitosamente
+ *       201:
+ *         description: Niño creado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Child created successfully"
+ *                 id_niño:
+ *                   type: string
+ *                   format: uuid
+ *                   example: "550e8400-e29b-41d4-a716-446655440000"
  *       400:
- *         description: Error en los datos enviados
- *       404:
- *         description: Tutor no encontrado
- *       500:
- *         description: Error interno del servidor
+ *         description: Validación fallida
  */
-router.put('/:id', [validateUUID, validateGuardian], async (req, res, next) => {
-  try {
-    const pool = await poolPromise;
-    await pool
-      .request()
-      .input('id_tutor', sql.UniqueIdentifier, req.params.id)
-      .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
-      .input('nombre', sql.NVarChar, req.body.nombre)
-      .input('identificacion', sql.NVarChar, req.body.identificacion)
-      .input('relacion', sql.NVarChar, req.body.relacion)
-      .input('telefono', sql.NVarChar, req.body.telefono)
-      .input('email', sql.NVarChar, req.body.email)
-      .input('direccion', sql.NVarChar, req.body.direccion)
-      .input('nacionalidad', sql.UniqueIdentifier, req.body.nacionalidad)
-      .execute('sp_ActualizarTutor');
-    res.status(204).send();
-  } catch (err) {
-    next(err);
+router.post(
+  '/',
+  [
+    body('nombre_completo').isString().trim().notEmpty().withMessage('Full name is required'),
+    body('identificacion').isString().trim().notEmpty().withMessage('Identification is required'),
+    body('nacionalidad')
+      .isIn(['Dominicano', 'Extranjero'])
+      .withMessage('Nationality must be Dominicano or Extranjero'),
+    body('fecha_nacimiento').isDate().withMessage('Invalid birth date'),
+    body('genero').isIn(['M', 'F', 'O']).withMessage('Gender must be M, F, or O'),
+    body('id_centro_salud').optional().isUUID().withMessage('Invalid UUID for health center'),
+    body('contacto_principal')
+      .optional()
+      .isIn(['Madre', 'Padre', 'Tutor'])
+      .withMessage('Contact must be Madre, Padre, or Tutor'),
+  ],
+  validate,
+  async (req, res, next) => {
+    const {
+      nombre_completo,
+      identificacion,
+      nacionalidad,
+      pais_nacimiento,
+      fecha_nacimiento,
+      genero,
+      direccion_residencia,
+      latitud,
+      longitud,
+      id_centro_salud,
+      contacto_principal,
+      id_salud_nacional,
+    } = req.body;
+
+    try {
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('nombre_completo', sql.NVarChar, nombre_completo)
+        .input('identificacion', sql.NVarChar, identificacion)
+        .input('nacionalidad', sql.NVarChar, nacionalidad)
+        .input('pais_nacimiento', sql.NVarChar, pais_nacimiento || null)
+        .input('fecha_nacimiento', sql.Date, fecha_nacimiento)
+        .input('genero', sql.Char, genero)
+        .input('direccion_residencia', sql.NVarChar, direccion_residencia || null)
+        .input('latitud', sql.Decimal(9, 6), latitud || null)
+        .input('longitud', sql.Decimal(9, 6), longitud || null)
+        .input('id_centro_salud', sql.UniqueIdentifier, id_centro_salud || null)
+        .input('contacto_principal', sql.NVarChar, contacto_principal || null)
+        .input('id_salud_nacional', sql.NVarChar, id_salud_nacional || null)
+        .execute('sp_CrearNino');
+
+      res.status(201).json({ message: 'Child created successfully', id_niño: result.recordset[0].id_niño });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
- * /api/guardians/{id}:
- *   delete:
- *     summary: Eliminar un tutor
- *     tags: [Guardians]
+ * /api/children/{id}:
+ *   put:
+ *     summary: Actualiza un niño
+ *     tags: [Children]
  *     parameters:
- *       - in: path
- *         name: id
+ *       - name: id
+ *         in: path
  *         required: true
  *         schema:
  *           type: string
  *           format: uuid
+ *           example: "550e8400-e29b-41d4-a716-446655440000"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre_completo:
+ *                 type: string
+ *                 example: "Juan Pérez Actualizado"
+ *               identificacion:
+ *                 type: string
+ *                 example: "001-1234567-8"
+ *               nacionalidad:
+ *                 type: string
+ *                 enum: [Dominicano, Extranjero]
+ *                 example: "Dominicano"
+ *               pais_nacimiento:
+ *                 type: string
+ *                 example: "República Dominicana"
+ *               fecha_nacimiento:
+ *                 type: string
+ *                 format: date
+ *                 example: "2015-05-15"
+ *               genero:
+ *                 type: string
+ *                 enum: [M, F, O]
+ *                 example: "M"
+ *               direccion_residencia:
+ *                 type: string
+ *                 example: "Calle 2, Santo Domingo"
+ *               latitud:
+ *                 type: number
+ *                 format: float
+ *                 example: 18.4861
+ *               longitud:
+ *                 type: number
+ *                 format: float
+ *                 example: -69.9312
+ *               id_centro_salud:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "550e8400-e29b-41d4-a716-446655440001"
+ *               contacto_principal:
+ *                 type: string
+ *                 enum: [Madre, Padre, Tutor]
+ *                 example: "Madre"
+ *               id_salud_nacional:
+ *                 type: string
+ *                 example: "SN001"
  *     responses:
- *       204:
- *         description: Tutor eliminado exitosamente
+ *       200:
+ *         description: Niño actualizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Child updated successfully"
  *       400:
- *         description: ID inválido
- *       404:
- *         description: Tutor no encontrado
- *       500:
- *         description: Error interno del servidor
+ *         description: Validación fallida
  */
-router.delete('/:id', [validateUUID], async (req, res, next) => {
-  try {
-    const pool = await poolPromise;
-    await pool
-      .request()
-      .input('id_tutor', sql.UniqueIdentifier, req.params.id)
-      .query('DELETE FROM Tutores WHERE id_tutor = @id_tutor'); // Nota: No hay stored procedure, usar DELETE directo
-    res.status(204).send();
-  } catch (err) {
-    next(err);
+router.put(
+  '/:id',
+  [
+    param('id').isUUID().withMessage('Invalid UUID'),
+    body('nombre_completo').isString().trim().notEmpty().withMessage('Full name is required'),
+    body('identificacion').isString().trim().notEmpty().withMessage('Identification is required'),
+    body('nacionalidad')
+      .isIn(['Dominicano', 'Extranjero'])
+      .withMessage('Nationality must be Dominicano or Extranjero'),
+    body('fecha_nacimiento').isDate().withMessage('Invalid birth date'),
+    body('genero').isIn(['M', 'F', 'O']).withMessage('Gender must be M, F, or O'),
+    body('id_centro_salud').optional().isUUID().withMessage('Invalid UUID for health center'),
+    body('contacto_principal')
+      .optional()
+      .isIn(['Madre', 'Padre', 'Tutor'])
+      .withMessage('Contact must be Madre, Padre, or Tutor'),
+  ],
+  validate,
+  async (req, res, next) => {
+    const {
+      nombre_completo,
+      identificacion,
+      nacionalidad,
+      pais_nacimiento,
+      fecha_nacimiento,
+      genero,
+      direccion_residencia,
+      latitud,
+      longitud,
+      id_centro_salud,
+      contacto_principal,
+      id_salud_nacional,
+    } = req.body;
+
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_niño', sql.UniqueIdentifier, req.params.id)
+        .input('nombre_completo', sql.NVarChar, nombre_completo)
+        .input('identificacion', sql.NVarChar, identificacion)
+        .input('nacionalidad', sql.NVarChar, nacionalidad)
+        .input('pais_nacimiento', sql.NVarChar, pais_nacimiento || null)
+        .input('fecha_nacimiento', sql.Date, fecha_nacimiento)
+        .input('genero', sql.Char, genero)
+        .input('direccion_residencia', sql.NVarChar, direccion_residencia || null)
+        .input('latitud', sql.Decimal(9, 6), latitud || null)
+        .input('longitud', sql.Decimal(9, 6), longitud || null)
+        .input('id_centro_salud', sql.UniqueIdentifier, id_centro_salud || null)
+        .input('contacto_principal', sql.NVarChar, contacto_principal || null)
+        .input('id_salud_nacional', sql.NVarChar, id_salud_nacional || null)
+        .execute('sp_ActualizarNino');
+
+      res.json({ message: 'Child updated successfully' });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
+
+/**
+ * @swagger
+ * /api/children/{id}:
+ *   delete:
+ *     summary: Elimina un niño
+ *     tags: [Children]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *           example: "550e8400-e29b-41d4-a716-446655440000"
+ *     responses:
+ *       200:
+ *         description: Niño eliminado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Child deleted successfully"
+ *       400:
+ *         description: Validación fallida
+ */
+router.delete(
+  '/:id',
+  [param('id').isUUID().withMessage('Invalid UUID')],
+  validate,
+  async (req, res, next) => {
+    try {
+      const pool = await poolPromise;
+      await pool
+        .request()
+        .input('id_niño', sql.UniqueIdentifier, req.params.id)
+        .execute('sp_EliminarNino');
+
+      res.json({ message: 'Child deleted successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 module.exports = router;

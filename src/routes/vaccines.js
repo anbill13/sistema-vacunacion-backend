@@ -1,10 +1,32 @@
+// src/routes/vaccines.js
 const express = require('express');
-const { body, param } = require('express-validator');
-const { authenticate, checkRole } = require('../middleware/auth');
+const { body, param, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
-const { logger } = require('../config/db');
+const winston = require('winston');
 
 const router = express.Router();
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
+
+const validateVaccine = [
+  body('nombre').notEmpty().isString().withMessage('Nombre es requerido'),
+  body('fabricante').notEmpty().isString().withMessage('Fabricante es requerido'),
+  body('tipo').notEmpty().isString().withMessage('Tipo es requerido'),
+  body('dosis_requeridas').isInt({ min: 1 }).withMessage('Dosis requeridas debe ser un número positivo'),
+];
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
 
 /**
  * @swagger
@@ -41,6 +63,12 @@ const router = express.Router();
  *         dosis_requeridas:
  *           type: integer
  *           description: Número de dosis requeridas
+ *       example:
+ *         id_vacuna: "123e4567-e89b-12d3-a456-426614174008"
+ *         nombre: "Pfizer-BioNTech"
+ *         fabricante: "Pfizer"
+ *         tipo: "ARNm"
+ *         dosis_requeridas: 2
  *     VaccineInput:
  *       type: object
  *       required:
@@ -59,15 +87,6 @@ const router = express.Router();
  *           type: integer
  */
 
-const validateVaccine = [
-  body('nombre').notEmpty().isString().withMessage('Nombre es requerido'),
-  body('fabricante').notEmpty().isString().withMessage('Fabricante es requerido'),
-  body('tipo').notEmpty().isString().withMessage('Tipo es requerido'),
-  body('dosis_requeridas').isInt({ min: 1 }).withMessage('Dosis requeridas debe ser un número positivo'),
-];
-
-const validateUUID = param('id').isUUID().withMessage('ID inválido');
-
 /**
  * @swagger
  * /api/vaccines:
@@ -85,16 +104,24 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Vaccine'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: No autorizado (requiere rol director o administrador)
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/', [authenticate, checkRole(['director', 'administrador'])], async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
+    logger.info('Obteniendo vacunas', { ip: req.ip, user: req.user?.username });
     const pool = await poolPromise;
     const result = await pool.request().query('SELECT * FROM Vacunas');
     res.status(200).json(result.recordset);
   } catch (err) {
-    next(err);
+    logger.error('Error al obtener vacunas', { error: err.message, ip: req.ip });
+    const error = new Error('Error al obtener vacunas');
+    error.statusCode = 500;
+    next(error);
   }
 });
 
@@ -122,25 +149,41 @@ router.get('/', [authenticate, checkRole(['director', 'administrador'])], async 
  *               $ref: '#/components/schemas/Vaccine'
  *       400:
  *         description: ID inválido
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: No autorizado (requiere rol director o administrador)
  *       404:
  *         description: Vacuna no encontrada
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/:id', [authenticate, checkRole(['director', 'administrador']), validateUUID], async (req, res, next) => {
+router.get('/:id', validateUUID, async (req, res, next) => {
   try {
+    logger.info('Obteniendo vacuna por ID', { id: req.params.id, ip: req.ip, user: req.user?.username });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
     const pool = await poolPromise;
     const result = await pool
       .request()
       .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
       .query('SELECT * FROM Vacunas WHERE id_vacuna = @id_vacuna');
     if (result.recordset.length === 0) {
+      logger.warn('Vacuna no encontrada', { id: req.params.id, ip: req.ip });
       const error = new Error('Vacuna no encontrada');
       error.statusCode = 404;
       throw error;
     }
     res.status(200).json(result.recordset[0]);
   } catch (err) {
+    logger.error('Error al obtener vacuna', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
     next(err);
   }
 });
@@ -172,28 +215,41 @@ router.get('/:id', [authenticate, checkRole(['director', 'administrador']), vali
  *                   format: uuid
  *       400:
  *         description: Error en los datos enviados
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: No autorizado (requiere rol director o administrador)
  *       500:
  *         description: Error interno del servidor
  */
-router.post(
-  '/',
-  [authenticate, checkRole(['director', 'administrador']), validateVaccine],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('nombre', sql.NVarChar, req.body.nombre)
-        .input('fabricante', sql.NVarChar, req.body.fabricante)
-        .input('tipo', sql.NVarChar, req.body.tipo)
-        .input('dosis_requeridas', sql.Int, req.body.dosis_requeridas)
-        .execute('sp_CrearVacuna');
-      res.status(201).json({ id_vacuna: result.recordset[0].id_vacuna });
-    } catch (err) {
-      next(err);
+router.post('/', validateVaccine, async (req, res, next) => {
+  try {
+    logger.info('Creando vacuna', { nombre: req.body.nombre, ip: req.ip, user: req.user?.username });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('nombre', sql.NVarChar, req.body.nombre)
+      .input('fabricante', sql.NVarChar, req.body.fabricante)
+      .input('tipo', sql.NVarChar, req.body.tipo)
+      .input('dosis_requeridas', sql.Int, req.body.dosis_requeridas)
+      .execute('sp_CrearVacuna');
+    res.status(201).json({ id_vacuna: result.recordset[0].id_vacuna });
+  } catch (err) {
+    logger.error('Error al crear vacuna', { error: err.message, ip: req.ip });
+    const error = new Error('Error al crear vacuna');
+    error.statusCode = err.number === 50001 ? 400 : 500;
+    error.data = err.message;
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -221,31 +277,52 @@ router.post(
  *         description: Vacuna actualizada exitosamente
  *       400:
  *         description: Error en los datos enviados
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: No autorizado (requiere rol director o administrador)
  *       404:
  *         description: Vacuna no encontrada
  *       500:
  *         description: Error interno del servidor
  */
-router.put(
-  '/:id',
-  [authenticate, checkRole(['director', 'administrador']), validateUUID, validateVaccine],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
-        .input('nombre', sql.NVarChar, req.body.nombre)
-        .input('fabricante', sql.NVarChar, req.body.fabricante)
-        .input('tipo', sql.NVarChar, req.body.tipo)
-        .input('dosis_requeridas', sql.Int, req.body.dosis_requeridas)
-        .execute('sp_ActualizarVacuna');
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+router.put('/:id', [validateUUID, validateVaccine], async (req, res, next) => {
+  try {
+    logger.info('Actualizando vacuna', { id: req.params.id, nombre: req.body.nombre, ip: req.ip, user: req.user?.username });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Vacunas WHERE id_vacuna = @id_vacuna');
+    if (exists.recordset.length === 0) {
+      logger.warn('Vacuna no encontrada', { id: req.params.id, ip: req.ip });
+      const error = new Error('Vacuna no encontrada');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
+      .input('nombre', sql.NVarChar, req.body.nombre)
+      .input('fabricante', sql.NVarChar, req.body.fabricante)
+      .input('tipo', sql.NVarChar, req.body.tipo)
+      .input('dosis_requeridas', sql.Int, req.body.dosis_requeridas)
+      .execute('sp_ActualizarVacuna');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al actualizar vacuna', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
-);
+});
 
 /**
  * @swagger
@@ -267,26 +344,47 @@ router.put(
  *         description: Vacuna eliminada exitosamente
  *       400:
  *         description: ID inválido
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: No autorizado (requiere rol director o administrador)
  *       404:
  *         description: Vacuna no encontrada
  *       500:
  *         description: Error interno del servidor
  */
-router.delete(
-  '/:id',
-  [authenticate, checkRole(['director', 'administrador']), validateUUID],
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
-        .execute('sp_EliminarVacuna');
-      res.status(204).send();
-    } catch (err) {
-      next(err);
+router.delete('/:id', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Eliminando vacuna', { id: req.params.id, ip: req.ip, user: req.user?.username });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Vacunas WHERE id_vacuna = @id_vacuna');
+    if (exists.recordset.length === 0) {
+      logger.warn('Vacuna no encontrada', { id: req.params.id, ip: req.ip });
+      const error = new Error('Vacuna no encontrada');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_vacuna', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_EliminarVacuna');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al eliminar vacuna', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
   }
-);
+});
 
 module.exports = router;

@@ -1,0 +1,57 @@
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-20T18:45:47.563Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-20T18:46:34.974Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T18:46:38.909Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T18:46:39.051Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T18:46:39.059Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T18:46:39.060Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T18:46:39.061Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T18:46:42.533Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers","params":{},"query":{},"timestamp":"2025-06-20T18:47:08.846Z"}
+{"ip":"::1","level":"info","message":"Obteniendo centros de vacunación","timestamp":"2025-06-20T18:47:08.848Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T18:50:23.400Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T18:50:23.470Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T18:50:23.481Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T18:50:23.487Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T18:50:23.489Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T18:50:26.258Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T18:53:36.338Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T18:53:36.422Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T18:53:36.434Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T18:53:36.435Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T18:53:36.438Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T18:53:39.732Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-20T18:53:52.423Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T18:54:09.803Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T18:54:09.924Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T18:54:09.931Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T18:54:09.933Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T18:54:09.937Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T18:54:12.070Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers","params":{},"query":{},"timestamp":"2025-06-20T18:54:20.731Z"}
+{"ip":"::1","level":"info","message":"Obteniendo centros de vacunación","timestamp":"2025-06-20T18:54:20.735Z"}
+{"body":{"password":"juanperez123","username":"juanperez"},"ip":"::1","level":"info","message":"POST /api/users/login","params":{},"query":{},"timestamp":"2025-06-20T18:55:01.908Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T18:56:50.152Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T18:56:50.325Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T18:56:50.346Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T18:56:50.348Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T18:56:50.349Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T18:56:53.408Z"}
+{"body":{"password":"juanperez123","username":"juanperez"},"ip":"::1","level":"info","message":"POST /api/users/login","params":{},"query":{},"timestamp":"2025-06-20T18:57:04.648Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-20T18:58:14.339Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T18:58:24.856Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T18:58:24.981Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T18:58:24.987Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T18:58:24.995Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T18:58:24.997Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T18:58:27.586Z"}
+{"body":{"password":"juanperez123","username":"juanperez"},"ip":"::1","level":"info","message":"POST /api/users/login","params":{},"query":{},"timestamp":"2025-06-20T18:58:41.481Z"}
+{"ip":"::1","level":"info","message":"Creando usuario","timestamp":"2025-06-20T18:58:41.491Z","username":"juanperez"}
+{"error":"Error al crear usuario","ip":"::1","level":"error","message":"Error en la aplicación","method":"POST","stack":"Error: Error al crear usuario\n    at C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\routes\\users.js:291:19\n    at Layer.handleRequest (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\lib\\layer.js:152:17)\n    at next (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\lib\\route.js:157:13)\n    at middleware (C:\\Users\\tiffa\\sistema-vacunacion-backend\\node_modules\\express-validator\\lib\\middlewares\\check.js:16:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)","timestamp":"2025-06-20T18:58:41.497Z","url":"/api/users/login"}
+{"errors":[{"location":"body","msg":"Invalid value","path":"nombre","type":"field"},{"location":"body","msg":"Nombre es requerido","path":"nombre","type":"field"},{"location":"body","msg":"Rol inválido","path":"rol","type":"field"}],"ip":"::1","level":"warn","message":"Validación fallida","timestamp":"2025-06-20T18:58:41.493Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Error al crear usuario","timestamp":"2025-06-20T18:58:41.494Z","username":"juanperez"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T18:59:01.264Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T18:59:01.462Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T18:59:01.471Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T18:59:01.473Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T18:59:01.479Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T18:59:04.745Z"}

@@ -1,17 +1,31 @@
-const { logger } = require('../config/db');
+// src/middleware/errorHandler.js
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
 
 const errorHandler = (err, req, res, next) => {
-  logger.error(`${err.message} - ${req.method} ${req.url}`, {
-    stack: err.stack,
-    body: req.body,
-    params: req.params,
-    query: req.query,
+  logger.error('Error en la aplicación', {
+    error: err.message || err.message,
+    stack: err.stack || err.stack,
+    method: req.method,
+    url: req.url,
+    ip: req.ip,
   });
 
-  const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({
-    message: err.message || 'Error interno del servidor',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  res.status(err.statusCode || 500).json({
+    error: err.message || 'Error del servidor',
+    data: err.data || [],
   });
 };
 

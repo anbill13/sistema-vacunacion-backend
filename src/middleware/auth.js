@@ -1,24 +1,42 @@
+// src/middleware/auth.js
 const jwt = require('jsonwebtoken');
+const winston = require('winston'); // Importa winston directamente
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
 
 const authenticate = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Extrae el token después de "Bearer"
+
   if (!token) {
-    return res.status(401).json({ message: 'No token provided' });
+    logger.warn('Intento de acceso sin token', { ip: req.ip });
+    const error = new Error('Access token is missing');
+    error.statusCode = 401;
+    return next(error);
   }
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      logger.warn('Token inválido', { token, ip: req.ip });
+      const error = new Error('Invalid token');
+      error.statusCode = 401;
+      return next(error);
+    }
+    req.user = user; // Guarda los datos del usuario decodificados
+    logger.info('Usuario autenticado', { user: user.username, ip: req.ip });
     next();
-  } catch (err) {
-    res.status(401).json({ message: 'Invalid token' });
-  }
+  });
 };
 
-const checkRole = (roles) => (req, res, next) => {
-  if (!roles.includes(req.user.role)) {
-    return res.status(403).json({ message: 'Access denied: insufficient permissions' });
-  }
-  next();
-};
-
-module.exports = { authenticate, checkRole };
+module.exports = authenticate;

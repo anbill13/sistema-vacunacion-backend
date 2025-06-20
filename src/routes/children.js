@@ -144,79 +144,6 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
 /**
  * @swagger
  * /api/children:
- *   get:
- *     summary: Listar todos los niños
- *     tags: [Children]
- *     responses:
- *       200:
- *         description: Lista de niños obtenida exitosamente
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Child'
- *       500:
- *         description: Error interno del servidor
- */
-router.get('/', async (req, res, next) => {
-  try {
-    const pool = await poolPromise;
-    const result = await pool.request().query('SELECT * FROM Niños');
-    res.status(200).json(result.recordset);
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/children/{id}:
- *   get:
- *     summary: Obtener un niño por ID
- *     tags: [Children]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       200:
- *         description: Niño obtenido exitosamente
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Child'
- *       400:
- *         description: ID inválido
- *       404:
- *         description: Niño no encontrado
- *       500:
- *         description: Error interno del servidor
- */
-router.get('/:id', [validateUUID], async (req, res, next) => {
-  try {
-    const pool = await poolPromise;
-    const result = await pool
-      .request()
-      .input('id_niño', sql.UniqueIdentifier, req.params.id)
-      .query('SELECT * FROM Niños WHERE id_niño = @id_niño');
-    if (result.recordset.length === 0) {
-      const error = new Error('Niño no encontrado');
-      error.statusCode = 404;
-      throw error;
-    }
-    res.status(200).json(result.recordset[0]);
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/children:
  *   post:
  *     summary: Crear un nuevo niño
  *     tags: [Children]
@@ -314,42 +241,6 @@ router.put('/:id', [validateUUID, validateChild], async (req, res, next) => {
       .input('contacto_principal', sql.NVarChar, req.body.contacto_principal)
       .input('id_salud_nacional', sql.NVarChar, req.body.id_salud_nacional)
       .execute('sp_ActualizarNino');
-    res.status(204).send();
-  } catch (err) {
-    next(err);
-  }
-});
-
-/**
- * @swagger
- * /api/children/{id}:
- *   delete:
- *     summary: Eliminar un niño
- *     tags: [Children]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       204:
- *         description: Niño eliminado exitosamente
- *       400:
- *         description: ID inválido
- *       404:
- *         description: Niño no encontrado
- *       500:
- *         description: Error interno del servidor
- */
-router.delete('/:id', [validateUUID], async (req, res, next) => {
-  try {
-    const pool = await poolPromise;
-    await pool
-      .request()
-      .input('id_niño', sql.UniqueIdentifier, req.params.id)
-      .query('DELETE FROM Niños WHERE id_niño = @id_niño'); // Nota: No hay stored procedure, usar DELETE directo
     res.status(204).send();
   } catch (err) {
     next(err);
