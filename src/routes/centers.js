@@ -24,7 +24,11 @@ const validateCenter = [
   body('direccion').optional().isString().withMessage('Dirección debe ser una cadena válida'),
   body('latitud').optional().isFloat().withMessage('Latitud inválida'),
   body('longitud').optional().isFloat().withMessage('Longitud inválida'),
-  body('telefono').optional().isString().withMessage('Teléfono debe ser una cadena válida'),
+  body('telefono')
+    .optional()
+    .isString()
+    .matches(/^\+?[\d\s\-()]{7,15}$/)
+    .withMessage('Teléfono debe ser un número válido (e.g., +1-809-532-0001)'),
   body('director').optional().isString().withMessage('Director debe ser una cadena válida'),
   body('sitio_web').optional().isURL().withMessage('Sitio web inválido'),
 ];
@@ -221,13 +225,13 @@ router.post('/', validateCenter, async (req, res, next) => {
     const result = await pool
       .request()
       .input('nombre_centro', sql.NVarChar, req.body.nombre_centro)
-      .input('nombre_corto', sql.NVarChar, req.body.nombre_corto)
-      .input('direccion', sql.NVarChar, req.body.direccion)
-      .input('latitud', sql.Decimal(9, 6), req.body.latitud)
-      .input('longitud', sql.Decimal(9, 6), req.body.longitud)
-      .input('telefono', sql.NVarChar, req.body.telefono)
-      .input('director', sql.NVarChar, req.body.director)
-      .input('sitio_web', sql.NVarChar, req.body.sitio_web)
+      .input('nombre_corto', sql.NVarChar, req.body.nombre_corto || null)
+      .input('direccion', sql.NVarChar, req.body.direccion || null)
+      .input('latitud', sql.Decimal(9, 6), req.body.latitud ?? null)
+      .input('longitud', sql.Decimal(9, 6), req.body.longitud ?? null)
+      .input('telefono', sql.NVarChar, req.body.telefono || null)
+      .input('director', sql.NVarChar, req.body.director || null)
+      .input('sitio_web', sql.NVarChar, req.body.sitio_web || null)
       .execute('sp_CrearCentroVacunacion');
     res.status(201).json({ id_centro: result.recordset[0].id_centro });
   } catch (err) {
@@ -320,13 +324,13 @@ router.put('/:id', [validateUUID, validateCenter], async (req, res, next) => {
       .request()
       .input('id_centro', sql.UniqueIdentifier, req.params.id)
       .input('nombre_centro', sql.NVarChar, req.body.nombre_centro)
-      .input('nombre_corto', sql.NVarChar, req.body.nombre_corto)
-      .input('direccion', sql.NVarChar, req.body.direccion)
-      .input('latitud', sql.Decimal(9, 6), req.body.latitud)
-      .input('longitud', sql.Decimal(9, 6), req.body.longitud)
-      .input('telefono', sql.NVarChar, req.body.telefono)
-      .input('director', sql.NVarChar, req.body.director)
-      .input('sitio_web', sql.NVarChar, req.body.sitio_web)
+      .input('nombre_corto', sql.NVarChar, req.body.nombre_corto || null)
+      .input('direccion', sql.NVarChar, req.body.direccion || null)
+      .input('latitud', sql.Decimal(9, 6), req.body.latitud ?? null)
+      .input('longitud', sql.Decimal(9, 6), req.body.longitud ?? null)
+      .input('telefono', sql.NVarChar, req.body.telefono || null)
+      .input('director', sql.NVarChar, req.body.director || null)
+      .input('sitio_web', sql.NVarChar, req.body.sitio_web || null)
       .execute('sp_ActualizarCentroVacunacion');
     res.status(204).send();
   } catch (err) {
