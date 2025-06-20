@@ -1,35 +1,150 @@
 const express = require('express');
-const { body, param, validationResult } = require('express-validator');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { poolPromise, sql } = require('../config/db');
-const authenticate = require('../middleware/auth');
-const checkRole = require('../middleware/role');
 const router = express.Router();
-
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const error = new Error('Validation failed');
-    error.statusCode = 400;
-    error.data = errors.array();
-    return next(error);
-  }
-  next();
-};
+const { body, param, validationResult } = require('express-validator');
+const sql = require('mssql');
+const bcrypt = require('bcryptjs');
+const { authenticate, checkRole } = require('../middleware/auth');
+const config = require('../config/dbConfig');
 
 /**
  * @swagger
  * tags:
  *   name: Users
- *   description: Operaciones relacionadas con usuarios
+ *   description: Gestión de usuarios del sistema
  */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       required:
+ *         - nombre
+ *         - rol
+ *         - username
+ *         - password
+ *       properties:
+ *         id_usuario:
+ *           type: string
+ *           format: uuid
+ *           description: Identificador único del usuario
+ *         nombre:
+ *           type: string
+ *           description: Nombre del usuario
+ *         rol:
+ *           type: string
+ *           enum: [doctor, director, responsable, administrador]
+ *           description: Rol del usuario
+ *         id_centro:
+ *           type: string
+ *           format: uuid
+ *           description: ID del centro asociado (opcional)
+ *         username:
+ *           type: string
+ *           description: Nombre de usuario
+ *         password:
+ *           type: string
+ *           description: Contraseña hasheada
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Email del usuario (opcional)
+ *         telefono:
+ *           type: string
+ *           description: Teléfono del usuario (opcional)
+ *         estado:
+ *           type: string
+ *           enum: [Activo, Inactivo]
+ *           description: Estado del usuario
+ *       example:
+ *         id_usuario: "123e4567-e89b-12d3-a456-426614174007"
+ *         nombre: "Carlos Ramírez"
+ *         rol: "administrador"
+ *         id_centro: "123e4567-e89b-12d3-a456-426614174002"
+ *         username: "carlosr"
+ *         email: "carlos@example.com"
+ *         telefono: "809-555-3456"
+ *         estado: "Activo"
+ *     UserInput:
+ *       type: object
+ *       required:
+ *         - nombre
+ *         - rol
+ *         - username
+ *         - password
+ *       properties:
+ *         nombre:
+ *           type: string
+ *         rol:
+ *           type: string
+ *           enum: [doctor, director, responsable, administrador]
+ *         id_centro:
+ *           type: string
+ *           format: uuid
+ *           nullable: true
+ *         username:
+ *           type: string
+ *         password:
+ *           type: string
+ *         email:
+ *           type: string
+ *           format: email
+ *           nullable: true
+ *         telefono:
+ *           type: string
+ *           nullable: true
+ */
+
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
+const validateUser = [
+  body('nombre').notEmpty().isString().withMessage('Nombre es requerido'),
+  body('rol').isIn(['doctor', 'director', 'responsable', 'administrador']).withMessage('Rol inválido'),
+  body('id_centro').optional().isUUID().withMessage('ID de centro inválido'),
+  body('username').notEmpty().isString().withMessage('Nombre de usuario es requerido'),
+  body('password').notEmpty().isString().withMessage('Contraseña es requerida'),
+  body('email').optional().isEmail(),
+  body('telefono').optional().isString(),
+];
+
+/**
+ * @swagger
+ * /api/users:
+ *   get:
+ *     summary: Obtener todos los usuarios activos
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de usuarios activos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
+ *       500:
+ *         description: Error del servidor
+ */
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool.request().query(`
+      SELECT id_usuario, nombre, rol, id_centro, username, email, telefono, estado
+      FROM Usuarios WHERE estado = 'Activo'
+    `);
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener usuarios' });
+  }
+});
 
 /**
  * @swagger
  * /api/users:
  *   post:
- *     summary: Crea un nuevo usuario
+ *     summary: Crear un nuevo usuario
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -38,104 +153,56 @@ const validate = (req, res, next) => {
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               nombre:
- *                 type: string
- *                 example: "Juan Pérez"
- *               rol:
- *                 type: string
- *                 enum: [doctor, director, responsable, administrador]
- *                 example: "doctor"
- *               id_centro:
- *                 type: string
- *                 format: uuid
- *                 example: "550e8400-e29b-41d4-a716-446655440000"
- *               username:
- *                 type: string
- *                 example: "juanperez"
- *               password:
- *                 type: string
- *                 example: "password123"
- *               email:
- *                 type: string
- *                 format: email
- *                 example: "juan@example.com"
- *               telefono:
- *                 type: string
- *                 example: "8091234567"
- *               estado:
- *                 type: string
- *                 enum: [Activo, Inactivo]
- *                 example: "Activo"
+ *             $ref: '#/components/schemas/UserInput'
  *     responses:
  *       201:
- *         description: Usuario creado
+ *         description: Usuario creado exitosamente
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
- *                   example: "User created"
  *                 id_usuario:
  *                   type: string
  *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440000"
  *       400:
- *         description: Validación fallida
+ *         description: Error en los datos enviados
  *       403:
- *         description: No autorizado (solo administradores pueden crear usuarios)
+ *         description: No autorizado (requiere rol de administrador)
+ *       500:
+ *         description: Error del servidor
  */
-router.post(
-  '/',
-  [
-    authenticate,
-    checkRole(['administrador']), // Solo administradores pueden crear usuarios
-    body('nombre').isString().trim().notEmpty().withMessage('nombre is required'),
-    body('rol')
-      .isIn(['doctor', 'director', 'responsable', 'administrador'])
-      .withMessage('Invalid rol'),
-    body('id_centro').optional().isUUID().withMessage('Invalid UUID for id_centro'),
-    body('username').isString().trim().notEmpty().withMessage('username is required'),
-    body('password').isString().trim().notEmpty().withMessage('password is required'),
-    body('email').optional().isEmail().withMessage('Invalid email'),
-    body('telefono').optional().isString().trim().withMessage('Invalid telefono'),
-    body('estado').isIn(['Activo', 'Inactivo']).withMessage('Invalid estado'),
-  ],
-  validate,
-  async (req, res, next) => {
-    const { nombre, rol, id_centro, username, password, email, telefono, estado } = req.body;
+router.post('/', authenticate, checkRole(['administrador']), validateUser, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    try {
-      const password_hash = await bcrypt.hash(password, 10);
+  const { nombre, rol, id_centro, username, password, email, telefono } = req.body;
 
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('nombre', sql.NVarChar, nombre)
-        .input('rol', sql.NVarChar, rol)
-        .input('id_centro', sql.UniqueIdentifier, id_centro || null)
-        .input('username', sql.NVarChar, username)
-        .input('password_hash', sql.NVarChar, password_hash)
-        .input('email', sql.NVarChar, email || null)
-        .input('telefono', sql.NVarChar, telefono || null)
-        .input('estado', sql.NVarChar, estado)
-        .execute('sp_CrearUsuario');
+  try {
+    const password_hash = await bcrypt.hash(password, 10);
+    const pool = await sql.connect(config);
+    const result = await pool.request()
+      .input('nombre', sql.NVarChar, nombre)
+      .input('rol', sql.NVarChar, rol)
+      .input('id_centro', sql.UniqueIdentifier, id_centro)
+      .input('username', sql.NVarChar, username)
+      .input('password_hash', sql.NVarChar, password_hash)
+      .input('email', sql.NVarChar, email)
+      .input('telefono', sql.NVarChar, telefono)
+      .execute('sp_CrearUsuario');
 
-      res.status(201).json({ message: 'User created', id_usuario: result.recordset[0].id_usuario });
-    } catch (error) {
-      next(error);
-    }
+    res.status(201).json({ id_usuario: result.recordset[0].id_usuario });
+  } catch (err) {
+    if (err.number === 50001 || err.number === 50002) return res.status(400).json({ error: err.message });
+    res.status(500).json({ error: 'Error al crear usuario' });
   }
-);
+});
 
 /**
  * @swagger
  * /api/users/login:
  *   post:
- *     summary: Inicia sesión de usuario
+ *     summary: Iniciar sesión
  *     tags: [Users]
  *     requestBody:
  *       required: true
@@ -143,13 +210,15 @@ router.post(
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - username
+ *               - password
  *             properties:
  *               username:
  *                 type: string
- *                 example: "juanperez"
  *               password:
  *                 type: string
- *                 example: "password123"
+ *                 format: password
  *     responses:
  *       200:
  *         description: Inicio de sesión exitoso
@@ -158,217 +227,111 @@ router.post(
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
- *                   example: "Login successful"
  *                 token:
  *                   type: string
- *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *                 user:
- *                   type: object
- *                   properties:
- *                     id_usuario:
- *                       type: string
- *                       format: uuid
- *                       example: "550e8400-e29b-41d4-a716-446655440000"
- *                     username:
- *                       type: string
- *                       example: "juanperez"
- *                     rol:
- *                       type: string
- *                       example: "doctor"
+ *                   description: Token JWT
  *       401:
  *         description: Credenciales inválidas
- *       403:
- *         description: Cuenta de usuario inactiva
+ *       500:
+ *         description: Error del servidor
  */
-router.post(
-  '/login',
-  [
-    body('username').isString().trim().notEmpty().withMessage('username is required'),
-    body('password').isString().trim().notEmpty().withMessage('password is required'),
-  ],
-  validate,
-  async (req, res, next) => { // Fixed: Removed the '25' typo
-    const { username, password } = req.body;
+router.post('/login', [
+  body('username').notEmpty().isString().withMessage('Nombre de usuario es requerido'),
+  body('password').notEmpty().isString().withMessage('Contraseña es requerida'),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('username', sql.NVarChar, username)
-        .query('SELECT id_usuario, username, password_hash, rol, estado FROM Usuarios WHERE username = @username');
+  const { username, password } = req.body;
 
-      if (result.recordset.length === 0) {
-        const error = new Error('Invalid credentials');
-        error.statusCode = 401;
-        throw error;
-      }
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool.request()
+      .input('username', sql.NVarChar, username)
+      .execute('sp_LoginUsuario');
 
-      const user = result.recordset[0];
+    const user = result.recordset[0];
+    if (!user) return res.status(401).json({ error: 'Credenciales inválidas' });
 
-      if (user.estado !== 'Activo') {
-        const error = new Error('User account is inactive');
-        error.statusCode = 403;
-        throw error;
-      }
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) return res.status(401).json({ error: 'Credenciales inválidas' });
 
-      const isValid = await bcrypt.compare(password, user.password_hash);
-      if (!isValid) {
-        const error = new Error('Invalid credentials');
-        error.statusCode = 401;
-        throw error;
-      }
-
-      const token = jwt.sign(
-        { id_usuario: user.id_usuario, username: user.username, rol: user.rol },
-        process.env.JWT_SECRET,
-        { expiresIn: '1h' }
-      );
-
-      res.json({
-        message: 'Login successful',
-        token,
-        user: { id_usuario: user.id_usuario, username: user.username, rol: user.rol },
-      });
-    } catch (error) {
-      next(error);
-    }
+    const token = generateToken(user); // Asume una función generateToken para JWT
+    res.json({ token });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al iniciar sesión' });
   }
-);
+});
 
 /**
  * @swagger
  * /api/users/{id}:
  *   get:
- *     summary: Obtiene un usuario por ID
+ *     summary: Obtener un usuario por ID
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
  *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440000"
+ *         description: ID del usuario
  *     responses:
  *       200:
  *         description: Usuario encontrado
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 id_usuario:
- *                   type: string
- *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440000"
- *                 nombre:
- *                   type: string
- *                   example: "Juan Pérez"
- *                 rol:
- *                   type: string
- *                   example: "doctor"
- *                 id_centro:
- *                   type: string
- *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440001"
- *                 username:
- *                   type: string
- *                   example: "juanperez"
- *                 email:
- *                   type: string
- *                   format: email
- *                   example: "juan@example.com"
- *                 telefono:
- *                   type: string
- *                   example: "8091234567"
- *                 estado:
- *                   type: string
- *                   enum: [Activo, Inactivo]
- *                   example: "Activo"
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         description: ID inválido
  *       404:
  *         description: Usuario no encontrado
+ *       500:
+ *         description: Error del servidor
  */
-router.get(
-  '/:id',
-  [authenticate, checkRole(['administrador', 'director', 'doctor', 'responsable'])], // Todos los roles pueden consultar usuarios
-  [param('id').isUUID().withMessage('Invalid UUID')],
-  validate,
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('id_usuario', sql.UniqueIdentifier, req.params.id)
-        .execute('sp_ObtenerUsuario');
+router.get('/:id', authenticate, validateUUID, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-      if (result.recordset.length === 0) {
-        const error = new Error('User not found');
-        error.statusCode = 404;
-        throw error;
-      }
-      const { password_hash, ...user } = result.recordset[0];
-      res.json(user);
-    } catch (error) {
-      next(error);
-    }
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool.request()
+      .input('id_usuario', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_ObtenerUsuario');
+
+    if (!result.recordset[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json(result.recordset[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener usuario' });
   }
-);
+});
 
 /**
  * @swagger
  * /api/users/{id}:
  *   put:
- *     summary: Actualiza un usuario
+ *     summary: Actualizar un usuario
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
  *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440000"
+ *         description: ID del usuario
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               nombre:
- *                 type: string
- *                 example: "Juan Pérez"
- *               rol:
- *                 type: string
- *                 enum: [doctor, director, responsable, administrador]
- *                 example: "doctor"
- *               id_centro:
- *                 type: string
- *                 format: uuid
- *                 example: "550e8400-e29b-41d4-a716-446655440001"
- *               username:
- *                 type: string
- *                 example: "juanperez"
- *               password:
- *                 type: string
- *                 example: "newpassword123"
- *               email:
- *                 type: string
- *                 format: email
- *                 example: "juan@example.com"
- *               telefono:
- *                 type: string
- *                 example: "8091234567"
- *               estado:
- *                 type: string
- *                 enum: [Activo, Inactivo]
- *                 example: "Activo"
+ *             $ref: '#/components/schemas/UserInput'
  *     responses:
  *       200:
  *         description: Usuario actualizado
@@ -379,94 +342,62 @@ router.get(
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "User updated"
+ *                   example: Usuario actualizado
  *       400:
- *         description: Validación fallida
+ *         description: Error en los datos enviados
  *       403:
- *         description: No autorizado (solo administradores pueden actualizar usuarios)
+ *         description: No autorizado (requiere rol de administrador)
  *       404:
  *         description: Usuario no encontrado
+ *       500:
+ *         description: Error del servidor
  */
-router.put(
-  '/:id',
-  [
-    authenticate,
-    checkRole(['administrador']), // Solo administradores pueden actualizar usuarios
-    param('id').isUUID().withMessage('Invalid UUID'),
-    body('nombre').isString().trim().notEmpty().withMessage('nombre is required'),
-    body('rol')
-      .isIn(['doctor', 'director', 'responsable', 'administrador'])
-      .withMessage('Invalid rol'),
-    body('id_centro').optional().isUUID().withMessage('Invalid UUID for id_centro'),
-    body('username').isString().trim().notEmpty().withMessage('username is required'),
-    body('password').optional().isString().trim().withMessage('Invalid password'),
-    body('email').optional().isEmail().withMessage('Invalid email'),
-    body('telefono').optional().isString().trim().withMessage('Invalid telefono'),
-    body('estado').isIn(['Activo', 'Inactivo']).withMessage('Invalid estado'),
-  ],
-  validate,
-  async (req, res, next) => {
-    const { nombre, rol, id_centro, username, password, email, telefono, estado } = req.body;
+router.put('/:id', authenticate, checkRole(['administrador']), validateUUID, validateUser, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    try {
-      const pool = await poolPromise;
+  const { nombre, rol, id_centro, username, password, email, telefono } = req.body;
 
-      let password_hash = null;
-      if (password) {
-        password_hash = await bcrypt.hash(password, 10);
-      } else {
-        const existingUser = await pool
-          .request()
-          .input('id_usuario', sql.UniqueIdentifier, req.params.id)
-          .query('SELECT password_hash FROM Usuarios WHERE id_usuario = @id_usuario');
+  try {
+    const password_hash = await bcrypt.hash(password, 10);
+    const pool = await sql.connect(config);
+    await pool.request()
+      .input('id_usuario', sql.UniqueIdentifier, req.params.id)
+      .input('nombre', sql.NVarChar, nombre)
+      .input('rol', sql.NVarChar, rol)
+      .input('id_centro', sql.UniqueIdentifier, id_centro)
+      .input('username', sql.NVarChar, username)
+      .input('password_hash', sql.NVarChar, password_hash)
+      .input('email', sql.NVarChar, email)
+      .input('telefono', sql.NVarChar, telefono)
+      .execute('sp_ActualizarUsuario');
 
-        if (existingUser.recordset.length === 0) {
-          const error = new Error('User not found');
-          error.statusCode = 404;
-          throw error;
-        }
-        password_hash = existingUser.recordset[0].password_hash;
-      }
-
-      await pool
-        .request()
-        .input('id_usuario', sql.UniqueIdentifier, req.params.id)
-        .input('nombre', sql.NVarChar, nombre)
-        .input('rol', sql.NVarChar, rol)
-        .input('id_centro', sql.UniqueIdentifier, id_centro || null)
-        .input('username', sql.NVarChar, username)
-        .input('password_hash', sql.NVarChar, password_hash)
-        .input('email', sql.NVarChar, email || null)
-        .input('telefono', sql.NVarChar, telefono || null)
-        .input('estado', sql.NVarChar, estado)
-        .execute('sp_ActualizarUsuario');
-
-      res.json({ message: 'User updated' });
-    } catch (error) {
-      next(error);
-    }
+    res.json({ message: 'Usuario actualizado' });
+  } catch (err) {
+    if (err.number === 50001 || err.number === 50002) return res.status(400).json({ error: err.message });
+    res.status(500).json({ error: 'Error al actualizar usuario' });
   }
-);
+});
 
 /**
  * @swagger
  * /api/users/{id}:
  *   delete:
- *     summary: Elimina un usuario
+ *     summary: Desactivar un usuario
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
  *           type: string
  *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440000"
+ *         description: ID del usuario
  *     responses:
  *       200:
- *         description: Usuario eliminado
+ *         description: Usuario desactivado
  *         content:
  *           application/json:
  *             schema:
@@ -474,94 +405,31 @@ router.put(
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "User deleted"
+ *                   example: Usuario desactivado
  *       400:
- *         description: Validación fallida
+ *         description: ID inválido
  *       403:
- *         description: No autorizado (solo administradores pueden eliminar usuarios)
+ *         description: No autorizado (requiere rol de administrador)
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error del servidor
  */
-router.delete(
-  '/:id',
-  [authenticate, checkRole(['administrador'])], // Solo administradores pueden eliminar usuarios
-  [param('id').isUUID().withMessage('Invalid UUID')],
-  validate,
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_usuario', sql.UniqueIdentifier, req.params.id)
-        .execute('sp_EliminarUsuario');
+router.delete('/:id', authenticate, checkRole(['administrador']), validateUUID, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-      res.json({ message: 'User deleted' });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-/**
- * @swagger
- * /api/users:
- *   get:
- *     summary: Obtiene todos los usuarios
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Lista de usuarios
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id_usuario:
- *                     type: string
- *                     format: uuid
- *                     example: "550e8400-e29b-41d4-a716-446655440000"
- *                   nombre:
- *                     type: string
- *                     example: "Juan Pérez"
- *                   rol:
- *                     type: string
- *                     enum: [doctor, director, responsable, administrador]
- *                     example: "doctor"
- *                   id_centro:
- *                     type: string
- *                     format: uuid
- *                     example: "550e8400-e29b-41d4-a716-446655440001"
- *                   username:
- *                     type: string
- *                     example: "juanperez"
- *                   email:
- *                     type: string
- *                     format: email
- *                     example: "juan@example.com"
- *                   telefono:
- *                     type: string
- *                     example: "8091234567"
- *                   estado:
- *                     type: string
- *                     enum: [Activo, Inactivo]
- *                     example: "Activo"
- */
-router.get(
-  '/',
-  [authenticate, checkRole(['administrador'])], // Solo administradores pueden listar usuarios
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .execute('sp_ObtenerTodosUsuarios');
+  try {
+    const pool = await sql.connect(config);
+    await pool.request()
+      .input('id_usuario', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_EliminarUsuario');
 
-      const users = result.recordset.map(({ password_hash, ...user }) => user);
-      res.json(users);
-    } catch (error) {
-      next(error);
-    }
+    res.json({ message: 'Usuario desactivado' });
+  } catch (err) {
+    if (err.number === 50001) return res.status(404).json({ error: err.message });
+    res.status(500).json({ error: 'Error al desactivar usuario' });
   }
-);
+});
+
 module.exports = router;

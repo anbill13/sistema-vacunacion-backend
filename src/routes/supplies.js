@@ -1,18 +1,9 @@
 const express = require('express');
-const { body, param, validationResult } = require('express-validator');
-const { poolPromise, sql } = require('../config/db');
 const router = express.Router();
-
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const error = new Error('Validation failed');
-    error.statusCode = 400;
-    error.data = errors.array();
-    return next(error);
-  }
-  next();
-};
+const { body, param, validationResult } = require('express-validator');
+const sql = require('mssql');
+const { authenticate } = require('../middleware/auth');
+const config = require('../config/dbConfig');
 
 /**
  * @swagger
@@ -23,372 +14,75 @@ const validate = (req, res, next) => {
 
 /**
  * @swagger
- * /api/supplies:
- *   post:
- *     summary: Crea un nuevo suministro
- *     tags: [Supplies]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               nombre_suministro:
- *                 type: string
- *                 example: "Jeringas desechables"
- *               tipo_suministro:
- *                 type: string
- *                 example: "Material médico"
- *               cantidad_total:
- *                 type: integer
- *                 example: 1000
- *               cantidad_disponible:
- *                 type: integer
- *                 example: 800
- *               id_centro:
- *                 type: string
- *                 format: uuid
- *                 example: "550e8400-e29b-41d4-a716-446655440001"
- *               fecha_entrada:
- *                 type: string
- *                 format: date
- *                 example: "2025-06-01"
- *               fecha_vencimiento:
- *                 type: string
- *                 format: date
- *                 example: "2026-06-01"
- *               proveedor:
- *                 type: string
- *                 example: "Proveedor XYZ"
- *               condiciones_almacenamiento:
- *                 type: string
- *                 example: "2-8°C"
- *     responses:
- *       201:
- *         description: Suministro creado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Supply created"
- *                 id_suministro:
- *                   type: string
- *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440010"
- *       400:
- *         description: Validación fallida
- */
-router.post(
-  '/',
-  [
-    body('nombre_suministro').isString().trim().notEmpty().withMessage('nombre_suministro is required'),
-    body('tipo_suministro').optional().isString().trim().withMessage('Invalid tipo_suministro'),
-    body('cantidad_total').isInt({ min: 0 }).withMessage('Invalid cantidad_total'),
-    body('cantidad_disponible').isInt({ min: 0 }).withMessage('Invalid cantidad_disponible'),
-    body('id_centro').isUUID().withMessage('Invalid UUID for id_centro'),
-    body('fecha_entrada').isDate().withMessage('Invalid fecha_entrada'),
-    body('fecha_vencimiento').optional().isDate().withMessage('Invalid fecha_vencimiento'),
-    body('proveedor').optional().isString().trim().withMessage('Invalid proveedor'),
-    body('condiciones_almacenamiento').optional().isString().trim().withMessage('Invalid condiciones_almacenamiento'),
-  ],
-  validate,
-  async (req, res, next) => {
-    const {
-      nombre_suministro,
-      tipo_suministro,
-      cantidad_total,
-      cantidad_disponible,
-      id_centro,
-      fecha_entrada,
-      fecha_vencimiento,
-      proveedor,
-      condiciones_almacenamiento,
-    } = req.body;
-
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('nombre_suministro', sql.NVarChar, nombre_suministro)
-        .input('tipo_suministro', sql.NVarChar, tipo_suministro || null)
-        .input('cantidad_total', sql.Int, cantidad_total)
-        .input('cantidad_disponible', sql.Int, cantidad_disponible)
-        .input('id_centro', sql.UniqueIdentifier, id_centro)
-        .input('fecha_entrada', sql.Date, fecha_entrada)
-        .input('fecha_vencimiento', sql.Date, fecha_vencimiento || null)
-        .input('proveedor', sql.NVarChar, proveedor || null)
-        .input('condiciones_almacenamiento', sql.NVarChar, condiciones_almacenamiento || null)
-        .execute('sp_CrearSuministro');
-
-      res.status(201).json({ message: 'Supply created', id_suministro: result.recordset[0].id_suministro });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * @swagger
- * /api/supplies/{id}:
- *   get:
- *     summary: Obtiene un suministro por ID
- *     tags: [Supplies]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
+ * components:
+ *   schemas:
+ *     Supply:
+ *       type: object
+ *       required:
+ *         - id_centro
+ *         - id_lote
+ *         - cantidad
+ *         - fecha_registro
+ *       properties:
+ *         id_suministro:
  *           type: string
  *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440010"
- *     responses:
- *       200:
- *         description: Suministro encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id_suministro:
- *                   type: string
- *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440010"
- *                 nombre_suministro:
- *                   type: string
- *                   example: "Jeringas desechables"
- *                 tipo_suministro:
- *                   type: string
- *                   example: "Material médico"
- *                 cantidad_total:
- *                   type: integer
- *                   example: 1000
- *                 cantidad_disponible:
- *                   type: integer
- *                   example: 800
- *                 id_centro:
- *                   type: string
- *                   format: uuid
- *                   example: "550e8400-e29b-41d4-a716-446655440001"
- *                 fecha_entrada:
- *                   type: string
- *                   format: date
- *                   example: "2025-06-01"
- *                 fecha_vencimiento:
- *                   type: string
- *                   format: date
- *                   example: "2026-06-01"
- *                 proveedor:
- *                   type: string
- *                   example: "Proveedor XYZ"
- *                 condiciones_almacenamiento:
- *                   type: string
- *                   example: "2-8°C"
- *       404:
- *         description: Suministro no encontrado
- */
-router.get(
-  '/:id',
-  [param('id').isUUID().withMessage('Invalid UUID')],
-  validate,
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('id_suministro', sql.UniqueIdentifier, req.params.id)
-        .execute('sp_ObtenerSuministro');
-
-      if (result.recordset.length === 0) {
-        const error = new Error('Supply not found');
-        error.statusCode = 404;
-        throw error;
-      }
-      res.json(result.recordset[0]);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * @swagger
- * /api/supplies/{id}:
- *   put:
- *     summary: Actualiza un suministro
- *     tags: [Supplies]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
+ *           description: Identificador único del suministro
+ *         id_centro:
  *           type: string
  *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440010"
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               nombre_suministro:
- *                 type: string
- *                 example: "Jeringas desechables actualizadas"
- *               tipo_suministro:
- *                 type: string
- *                 example: "Material médico"
- *               cantidad_total:
- *                 type: integer
- *                 example: 1200
- *               cantidad_disponible:
- *                 type: integer
- *                 example: 1000
- *               id_centro:
- *                 type: string
- *                 format: uuid
- *                 example: "550e8400-e29b-41d4-a716-446655440001"
- *               fecha_entrada:
- *                 type: string
- *                 format: date
- *                 example: "2025-06-01"
- *               fecha_vencimiento:
- *                 type: string
- *                 format: date
- *                 example: "2026-06-01"
- *               proveedor:
- *                 type: string
- *                 example: "Proveedor XYZ"
- *               condiciones_almacenamiento:
- *                 type: string
- *                 example: "2-8°C"
- *     responses:
- *       200:
- *         description: Suministro actualizado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Supply updated"
- *       400:
- *         description: Validación fallida
- */
-router.put(
-  '/:id',
-  [
-    param('id').isUUID().withMessage('Invalid UUID'),
-    body('nombre_suministro').isString().trim().notEmpty().withMessage('nombre_suministro is required'),
-    body('tipo_suministro').optional().isString().trim().withMessage('Invalid tipo_suministro'),
-    body('cantidad_total').isInt({ min: 0 }).withMessage('Invalid cantidad_total'),
-    body('cantidad_disponible').isInt({ min: 0 }).withMessage('Invalid cantidad_disponible'),
-    body('id_centro').isUUID().withMessage('Invalid UUID for id_centro'),
-    body('fecha_entrada').isDate().withMessage('Invalid fecha_entrada'),
-    body('fecha_vencimiento').optional().isDate().withMessage('Invalid fecha_vencimiento'),
-    body('proveedor').optional().isString().trim().withMessage('Invalid proveedor'),
-    body('condiciones_almacenamiento').optional().isString().trim().withMessage('Invalid condiciones_almacenamiento'),
-  ],
-  validate,
-  async (req, res, next) => {
-    const {
-      nombre_suministro,
-      tipo_suministro,
-      cantidad_total,
-      cantidad_disponible,
-      id_centro,
-      fecha_entrada,
-      fecha_vencimiento,
-      proveedor,
-      condiciones_almacenamiento,
-    } = req.body;
-
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_suministro', sql.UniqueIdentifier, req.params.id)
-        .input('nombre_suministro', sql.NVarChar, nombre_suministro)
-        .input('tipo_suministro', sql.NVarChar, tipo_suministro || null)
-        .input('cantidad_total', sql.Int, cantidad_total)
-        .input('cantidad_disponible', sql.Int, cantidad_disponible)
-        .input('id_centro', sql.UniqueIdentifier, id_centro)
-        .input('fecha_entrada', sql.Date, fecha_entrada)
-        .input('fecha_vencimiento', sql.Date, fecha_vencimiento || null)
-        .input('proveedor', sql.NVarChar, proveedor || null)
-        .input('condiciones_almacenamiento', sql.NVarChar, condiciones_almacenamiento || null)
-        .execute('sp_ActualizarSuministro');
-
-      res.json({ message: 'Supply updated' });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * @swagger
- * /api/supplies/{id}:
- *   delete:
- *     summary: Elimina un suministro
- *     tags: [Supplies]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: id
- *         in: path
- *         required: true
- *         schema:
+ *           description: ID del centro de vacunación
+ *         id_lote:
  *           type: string
  *           format: uuid
- *           example: "550e8400-e29b-41d4-a716-446655440010"
- *     responses:
- *       200:
- *         description: Suministro eliminado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Supply deleted"
- *       400:
- *         description: Validación fallida
+ *           description: ID del lote de vacunas
+ *         cantidad:
+ *           type: integer
+ *           description: Cantidad de vacunas en el suministro
+ *         fecha_registro:
+ *           type: string
+ *           format: date
+ *           description: Fecha de registro del suministro
+ *       example:
+ *         id_suministro: "123e4567-e89b-12d3-a456-426614174013"
+ *         id_centro: "123e4567-e89b-12d3-a456-426614174002"
+ *         id_lote: "123e4567-e89b-12d3-a456-426614174014"
+ *         cantidad: 100
+ *         fecha_registro: "2025-06-20"
+ *     SupplyInput:
+ *       type: object
+ *       required:
+ *         - id_centro
+ *         - id_lote
+ *         - cantidad
+ *         - fecha_registro
+ *       properties:
+ *         id_centro:
+ *           type: string
+ *           format: uuid
+ *         id_lote:
+ *           type: string
+ *           format: uuid
+ *         cantidad:
+ *           type: integer
+ *         fecha_registro:
+ *           type: string
+ *           format: date
  */
-router.delete(
-  '/:id',
-  [param('id').isUUID().withMessage('Invalid UUID')],
-  validate,
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      await pool
-        .request()
-        .input('id_suministro', sql.UniqueIdentifier, req.params.id)
-        .execute('sp_EliminarSuministro');
 
-      res.json({ message: 'Supply deleted' });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
+const validateUUID = param('id').isUUID().withMessage('ID inválido');
+const validateSupply = [
+  body('id_centro').isUUID().withMessage('ID de centro inválido'),
+  body('id_lote').isUUID().withMessage('ID de lote inválido'),
+  body('cantidad').isInt({ min: 1 }).withMessage('Cantidad debe ser un entero positivo'),
+  body('fecha_registro').isDate().withMessage('Fecha de registro inválida'),
+];
+
 /**
  * @swagger
  * /api/supplies:
  *   get:
- *     summary: Obtiene todos los suministros
+ *     summary: Obtener todos los suministros
  *     tags: [Supplies]
  *     security:
  *       - bearerAuth: []
@@ -400,56 +94,234 @@ router.delete(
  *             schema:
  *               type: array
  *               items:
- *                 type: object
- *                 properties:
- *                   id_suministro:
- *                     type: string
- *                     format: uuid
- *                     example: "550e8400-e29b-41d4-a716-446655440010"
- *                   nombre_suministro:
- *                     type: string
- *                     example: "Jeringas desechables"
- *                   tipo_suministro:
- *                     type: string
- *                     example: "Material médico"
- *                   cantidad_total:
- *                     type: integer
- *                     example: 1000
- *                   cantidad_disponible:
- *                     type: integer
- *                     example: 800
- *                   id_centro:
- *                     type: string
- *                     format: uuid
- *                     example: "550e8400-e29b-41d4-a716-446655440001"
- *                   fecha_entrada:
- *                     type: string
- *                     format: date
- *                     example: "2025-06-01"
- *                   fecha_vencimiento:
- *                     type: string
- *                     format: date
- *                     example: "2026-06-01"
- *                   proveedor:
- *                     type: string
- *                     example: "Proveedor XYZ"
- *                   condiciones_almacenamiento:
- *                     type: string
- *                     example: "2-8°C"
+ *                 $ref: '#/components/schemas/Supply'
+ *       500:
+ *         description: Error del servidor
  */
-router.get(
-  '/',
-  async (req, res, next) => {
-    try {
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .execute('sp_ObtenerTodosSuministros');
-
-      res.json(result.recordset);
-    } catch (error) {
-      next(error);
-    }
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool.request().query(`
+      SELECT id_suministro, id_centro, id_lote, cantidad, fecha_registro
+      FROM Suministros
+    `);
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener suministros' });
   }
-);
+});
+
+/**
+ * @swagger
+ * /api/supplies:
+ *   post:
+ *     summary: Crear un nuevo suministro
+ *     tags: [Supplies]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SupplyInput'
+ *     responses:
+ *       201:
+ *         description: Suministro creado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id_suministro:
+ *                   type: string
+ *                   format: uuid
+ *       400:
+ *         description: Error en los datos enviados
+ *       500:
+ *         description: Error del servidor
+ */
+router.post('/', authenticate, validateSupply, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  const { id_centro, id_lote, cantidad, fecha_registro } = req.body;
+
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool.request()
+      .input('id_centro', sql.UniqueIdentifier, id_centro)
+      .input('id_lote', sql.UniqueIdentifier, id_lote)
+      .input('cantidad', sql.Int, cantidad)
+      .input('fecha_registro', sql.Date, fecha_registro)
+      .execute('sp_CrearSuministro');
+
+    res.status(201).json({ id_suministro: result.recordset[0].id_suministro });
+  } catch (err) {
+    if (err.number >= 50001 && err.number <= 50003) return res.status(400).json({ error: err.message });
+    res.status(500).json({ error: 'Error al crear suministro' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/supplies/{id}:
+ *   get:
+ *     summary: Obtener un suministro por ID
+ *     tags: [Supplies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del suministro
+ *     responses:
+ *       200:
+ *         description: Suministro encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Supply'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Suministro no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+router.get('/:id', authenticate, validateUUID, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool.request()
+      .input('id_suministro', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_ObtenerSuministro');
+
+    if (!result.recordset[0]) return res.status(404).json({ error: 'Suministro no encontrado' });
+    res.json(result.recordset[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener suministro' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/supplies/{id}:
+ *   put:
+ *     summary: Actualizar un suministro
+ *     tags: [Supplies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del suministro
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SupplyInput'
+ *     responses:
+ *       200:
+ *         description: Suministro actualizado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Suministro actualizado
+ *       400:
+ *         description: Error en los datos enviados
+ *       404:
+ *         description: Suministro no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+router.put('/:id', authenticate, validateUUID, validateSupply, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  const { id_centro, id_lote, cantidad, fecha_registro } = req.body;
+
+  try {
+    const pool = await sql.connect(config);
+    await pool.request()
+      .input('id_suministro', sql.UniqueIdentifier, req.params.id)
+      .input('id_centro', sql.UniqueIdentifier, id_centro)
+      .input('id_lote', sql.UniqueIdentifier, id_lote)
+      .input('cantidad', sql.Int, cantidad)
+      .input('fecha_registro', sql.Date, fecha_registro)
+      .execute('sp_ActualizarSuministro');
+
+    res.json({ message: 'Suministro actualizado' });
+  } catch (err) {
+    if (err.number >= 50001 && err.number <= 50004) return res.status(400).json({ error: err.message });
+    res.status(500).json({ error: 'Error al actualizar suministro' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/supplies/{id}:
+ *   delete:
+ *     summary: Eliminar un suministro
+ *     tags: [Supplies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del suministro
+ *     responses:
+ *       200:
+ *         description: Suministro eliminado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Suministro eliminado
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Suministro no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+router.delete('/:id', authenticate, validateUUID, async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const pool = await sql.connect(config);
+    await pool.request()
+      .input('id_suministro', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_EliminarSuministro');
+
+    res.json({ message: 'Suministro eliminado' });
+  } catch (err) {
+    if (err.number === 50001) return res.status(404).json({ error: err.message });
+    res.status(500).json({ error: 'Error al eliminar suministro' });
+  }
+});
+
 module.exports = router;
