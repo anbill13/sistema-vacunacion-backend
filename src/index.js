@@ -71,9 +71,9 @@ app.get('/test-swagger', (req, res) => {
 // Rutas públicas
 app.use('/api/users/login', usersRoutes);
 app.use('/api/centers', centersRoutes); // Mount all centers routes, GET /api/centers is public in centers.js
+app.use('/api/users', usersRoutes);
 
 // Rutas protegidas
-app.use('/api/users', [authenticate, checkRole(['administrador'])], usersRoutes);
 app.use('/api/children', [authenticate, checkRole(['doctor', 'administrador'])], childrenRoutes);
 app.use('/api/guardians', [authenticate, checkRole(['doctor', 'administrador'])], guardiansRoutes);
 app.use('/api/centers', [authenticate, checkRole(['director', 'administrador'])], centersRoutes); // Protected routes override

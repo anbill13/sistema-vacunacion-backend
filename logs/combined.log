@@ -55,3 +55,43 @@
 {"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T18:59:01.473Z"}
 {"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T18:59:01.479Z"}
 {"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T18:59:04.745Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-20T19:26:32.655Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T19:27:03.254Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T19:27:03.276Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T19:27:03.278Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T19:27:03.280Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T19:27:03.479Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers","params":{},"query":{},"timestamp":"2025-06-20T19:27:23.469Z"}
+{"ip":"::1","level":"info","message":"Obteniendo centros de vacunación","timestamp":"2025-06-20T19:27:23.470Z"}
+{"body":{"direccion":"Av. Independencia 257, Santo Domingo","director":"Dr. Juan Gómez","latitud":18.4824,"longitud":-69.9269,"nombre_centro":"Hospital Darío Contreras","nombre_corto":"HDC","sitio_web":"http://www.hospitaldariocontreras.do","telefono":"+1-809-532-0001"},"ip":"::1","level":"info","message":"POST /api/centers","params":{},"query":{},"timestamp":"2025-06-20T19:27:35.180Z"}
+{"ip":"::1","level":"info","message":"Creando centro de vacunación","nombre":"Hospital Darío Contreras","timestamp":"2025-06-20T19:27:35.197Z"}
+{"body":{"password":"password123","username":"juanperez"},"ip":"::1","level":"info","message":"POST /api/users/login","params":{},"query":{},"timestamp":"2025-06-20T19:27:57.548Z"}
+{"body":{"password":"juanperez123","username":"juanperez"},"ip":"::1","level":"info","message":"POST /api/users/login","params":{},"query":{},"timestamp":"2025-06-20T19:28:04.677Z"}
+{"ip":"::1","level":"info","message":"GET /api/users/c11553cb-ea4d-4e91-a7e2-4552424c2d29","params":{},"query":{},"timestamp":"2025-06-20T19:29:42.520Z"}
+{"ip":"::1","level":"warn","message":"Intento de acceso sin token","timestamp":"2025-06-20T19:29:42.520Z"}
+{"error":"Access token is missing","ip":"::1","level":"error","message":"Error en la aplicación","method":"GET","stack":"Error: Access token is missing\n    at authenticate (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\middleware\\auth.js:24:19)\n    at Layer.handleRequest (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\lib\\layer.js:152:17)\n    at trimPrefix (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:342:13)\n    at C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:297:9\n    at processParams (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:582:12)\n    at next (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:291:5)\n    at C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\index.js:60:3\n    at Layer.handleRequest (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\lib\\layer.js:152:17)\n    at trimPrefix (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:342:13)\n    at C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\router\\index.js:297:9","timestamp":"2025-06-20T19:29:42.523Z","url":"/api/users/c11553cb-ea4d-4e91-a7e2-4552424c2d29"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T19:43:36.480Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T19:43:36.786Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T19:43:36.805Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T19:43:36.808Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T19:43:36.817Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T19:43:41.945Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers","params":{},"query":{},"timestamp":"2025-06-20T20:00:45.777Z"}
+{"ip":"::1","level":"info","message":"Obteniendo centros de vacunación","timestamp":"2025-06-20T20:00:45.778Z"}
+{"body":{"password":"123","username":"admin"},"ip":"::1","level":"info","message":"POST /api/users/login","params":{},"query":{},"timestamp":"2025-06-20T20:01:40.301Z"}
+{"body":{"password":"123","username":"admin"},"ip":"::1","level":"info","message":"POST /api/users/login","params":{},"query":{},"timestamp":"2025-06-20T20:03:25.337Z"}
+{"body":{"password":"123","username":"admin"},"ip":"::1","level":"info","message":"POST /api/users/login","params":{},"query":{},"timestamp":"2025-06-20T20:06:00.572Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T20:09:21.460Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T20:09:21.570Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T20:09:21.578Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T20:09:21.579Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T20:09:21.583Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T20:09:24.420Z"}
+{"body":{"password":"123","username":"admin"},"ip":"::1","level":"info","message":"POST /api/users/login","params":{},"query":{},"timestamp":"2025-06-20T20:09:42.543Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-20T20:17:49.849Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-20T20:17:54.627Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-20T20:17:54.716Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-20T20:17:54.722Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-20T20:17:54.723Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-20T20:17:54.726Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-20T20:17:59.651Z"}
