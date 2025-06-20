@@ -2,8 +2,6 @@
 const express = require('express');
 const cors = require('cors');
 const errorHandler = require('./middleware/errorHandler');
-const authenticate = require('./middleware/auth');
-const checkRole = require('./middleware/role');
 const winston = require('winston');
 require('dotenv').config();
 
@@ -40,7 +38,7 @@ const vaccinationHistoryRoutes = require('./routes/vaccinationHistory');
 const countriesRoutes = require('./routes/countries');
 const supplyUsageRoutes = require('./routes/supplyUsage');
 const reportsRoutes = require('./routes/reports');
-const authRoutes = require('./routes/auth'); // Ensure this line is present and correct
+const authRoutes = require('./routes/auth');
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
@@ -61,34 +59,31 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configura Swagger UI
+// Configure Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
-// Rutas públicas
-app.use('/api/login', authRoutes); // Confirm this line is present
-app.use('/api/centers', centersRoutes); // Public GET /api/centers
-app.use('/api/users', usersRoutes); // All other user endpoints
-
-// Rutas protegidas
-app.use('/api/children', [authenticate, checkRole(['doctor', 'administrador'])], childrenRoutes);
-app.use('/api/guardians', [authenticate, checkRole(['doctor', 'administrador'])], guardiansRoutes);
-app.use('/api/centers', [authenticate, checkRole(['director', 'administrador'])], centersRoutes); // Protected routes override
-app.use('/api/countries', [authenticate, checkRole(['director', 'administrador'])], countriesRoutes);
-app.use('/api/vaccines', [authenticate, checkRole(['director', 'administrador'])], vaccinesRoutes);
-app.use('/api/vaccine-lots', [authenticate, checkRole(['director', 'administrador'])], vaccineLotsRoutes);
-app.use('/api/vaccination-history', [authenticate, checkRole(['doctor', 'administrador'])], vaccinationHistoryRoutes);
-app.use('/api/appointments', [authenticate, checkRole(['doctor', 'administrador'])], appointmentsRoutes);
-app.use('/api/adverse-events', [authenticate, checkRole(['doctor', 'administrador'])], adverseEventsRoutes);
-app.use('/api/health-staff', [authenticate, checkRole(['director', 'administrador'])], healthStaffRoutes);
-app.use('/api/campaigns', [authenticate, checkRole(['director', 'administrador'])], campaignsRoutes);
-app.use('/api/campaign-assignments', [authenticate, checkRole(['director', 'administrador'])], campaignAssignmentsRoutes);
-app.use('/api/supplies', [authenticate, checkRole(['director', 'administrador'])], suppliesRoutes);
-app.use('/api/supply-usage', [authenticate, checkRole(['doctor', 'administrador'])], supplyUsageRoutes);
-app.use('/api/vaccination-schedules', [authenticate, checkRole(['director', 'administrador'])], vaccinationSchedulesRoutes);
-app.use('/api/national-calendars', [authenticate, checkRole(['director', 'administrador'])], nationalCalendarsRoutes);
-app.use('/api/audits', [authenticate, checkRole(['director', 'administrador'])], auditsRoutes);
-app.use('/api/alerts', [authenticate, checkRole(['doctor', 'director', 'administrador'])], alertsRoutes);
-app.use('/api/reports', [authenticate, checkRole(['director', 'administrador'])], reportsRoutes);
+// All routes are public (no authentication middleware)
+app.use('/api/login', authRoutes);
+app.use('/api/centers', centersRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/children', childrenRoutes);
+app.use('/api/guardians', guardiansRoutes);
+app.use('/api/countries', countriesRoutes);
+app.use('/api/vaccines', vaccinesRoutes); // Authentication removed
+app.use('/api/vaccine-lots', vaccineLotsRoutes);
+app.use('/api/vaccination-history', vaccinationHistoryRoutes);
+app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/adverse-events', adverseEventsRoutes);
+app.use('/api/health-staff', healthStaffRoutes);
+app.use('/api/campaigns', campaignsRoutes);
+app.use('/api/campaign-assignments', campaignAssignmentsRoutes);
+app.use('/api/supplies', suppliesRoutes);
+app.use('/api/supply-usage', supplyUsageRoutes);
+app.use('/api/vaccination-schedules', vaccinationSchedulesRoutes);
+app.use('/api/national-calendars', nationalCalendarsRoutes);
+app.use('/api/audits', auditsRoutes);
+app.use('/api/alerts', alertsRoutes);
+app.use('/api/reports', reportsRoutes);
 
 app.use(errorHandler);
 
