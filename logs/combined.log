@@ -553,3 +553,14 @@
 {"ip":"::1","level":"info","message":"GET /sourceMap/assets/css/shadow.css.map","params":{},"query":{},"timestamp":"2025-06-20T22:39:40.297Z"}
 {"ip":"::1","level":"info","message":"GET /sourceMap/assets/css/shadow.css.map","params":{},"query":{},"timestamp":"2025-06-20T22:39:40.337Z"}
 {"body":{"password":"1111","username":"0000"},"ip":"::1","level":"info","message":"POST /login","params":{},"query":{},"timestamp":"2025-06-20T22:39:48.664Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-21T20:51:28.871Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-21T20:51:38.667Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-21T20:51:38.765Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-21T20:51:38.777Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-21T20:51:38.779Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-21T20:51:38.788Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-21T20:51:45.437Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers/622e35fd-ce77-4805-b400-081af8a4fa71/children","params":{},"query":{},"timestamp":"2025-06-21T20:52:45.956Z"}
+{"id":"622e35fd-ce77-4805-b400-081af8a4fa71","ip":"::1","level":"info","message":"Obteniendo niños por centro","timestamp":"2025-06-21T20:52:45.960Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers/1b5a552d-de96-4bc9-adef-0ecb98422926/children","params":{},"query":{},"timestamp":"2025-06-21T20:52:59.351Z"}
+{"id":"1b5a552d-de96-4bc9-adef-0ecb98422926","ip":"::1","level":"info","message":"Obteniendo niños por centro","timestamp":"2025-06-21T20:52:59.352Z"}
