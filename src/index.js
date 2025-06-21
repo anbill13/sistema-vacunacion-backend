@@ -39,7 +39,7 @@ const countriesRoutes = require('./routes/countries');
 const supplyUsageRoutes = require('./routes/supplyUsage');
 const reportsRoutes = require('./routes/reports');
 const authRoutes = require('./routes/auth');
-const guardians = require('./routes/guardian');
+const guardians = require('./routes/guardians');
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
