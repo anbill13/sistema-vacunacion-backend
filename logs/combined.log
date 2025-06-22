@@ -1103,3 +1103,5 @@
 {"ip":"::1","level":"info","message":"Creando paciente con tutores","nombre_completo":"Pedro Díaz 4","timestamp":"2025-06-22T17:17:02.636Z","tutor_count":1}
 {"id_niño":"2377D88E-A8CB-40DC-ACD9-638248368442","ip":"::1","level":"info","message":"Paciente creado exitosamente","timestamp":"2025-06-22T17:17:02.812Z"}
 {"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T17:17:27.015Z"}
+{"ip":"::1","level":"info","message":"GET /api/vaccination-history","params":{},"query":{},"timestamp":"2025-06-22T17:31:51.847Z"}
+{"ip":"::1","level":"info","message":"Obteniendo historiales de vacunación","timestamp":"2025-06-22T17:31:51.852Z"}

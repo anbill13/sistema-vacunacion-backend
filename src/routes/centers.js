@@ -634,7 +634,7 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
 
 /**
  * @swagger
- * /api/centers/{id}/children:
+ * /api/centers/{id}/patients:
  *   get:
  *     summary: Obtener todos los niños asociados a un centro de vacunación
  *     tags: [Centers]
