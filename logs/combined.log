@@ -1105,3 +1105,20 @@
 {"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T17:17:27.015Z"}
 {"ip":"::1","level":"info","message":"GET /api/vaccination-history","params":{},"query":{},"timestamp":"2025-06-22T17:31:51.847Z"}
 {"ip":"::1","level":"info","message":"Obteniendo historiales de vacunación","timestamp":"2025-06-22T17:31:51.852Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T19:01:12.254Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T19:04:20.934Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T19:07:04.184Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T19:08:28.989Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T19:08:29.004Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T19:08:29.006Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T19:08:29.007Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T19:08:29.176Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T19:08:34.863Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T19:09:01.821Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T19:09:01.863Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T19:09:01.868Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T19:09:01.869Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T19:09:01.870Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T19:09:03.452Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T19:09:05.825Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T19:09:20.532Z"}

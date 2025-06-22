@@ -768,3 +768,7 @@
 {"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T16:58:04.595Z"}
 {"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T17:03:44.678Z"}
 {"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T17:12:39.217Z"}
+{"error":"Cannot open server 'sistemavacunacionapp' requested by the login. Client with IP address '148.0.144.48' is not allowed to access the server.  To enable access, use the Azure Management Portal or run sp_set_firewall_rule on the master database to create a firewall rule for this IP address or address range.  It may take up to five minutes for this change to take effect.","level":"error","message":"❌ Fallo en la conexión a la base de datos","timestamp":"2025-06-22T19:01:12.759Z"}
+{"error":"Cannot open server 'sistemavacunacionapp' requested by the login. Client with IP address '148.0.144.48' is not allowed to access the server.  To enable access, use the Azure Management Portal or run sp_set_firewall_rule on the master database to create a firewall rule for this IP address or address range.  It may take up to five minutes for this change to take effect.","level":"error","message":"❌ Fallo en la conexión a la base de datos","timestamp":"2025-06-22T19:04:21.401Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T19:07:04.748Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T19:09:21.082Z"}

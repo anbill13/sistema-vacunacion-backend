@@ -152,7 +152,7 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *           example: "http://www.hospitaldariocontreras.do"
  *       required:
  *         - nombre_centro
- *     Child:
+ *     Patient:
  *       type: object
  *       properties:
  *         id_nino:
@@ -654,7 +654,7 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Child'
+ *                 $ref: '#/components/schemas/Patient'
  *       400:
  *         description: ID inválido
  *         content:
@@ -697,7 +697,7 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
  *                   type: string
  *                   example: Error al obtener niños
  */
-router.get('/:id/children', validateUUID, async (req, res, next) => {
+router.get('/:id/patients', validateUUID, async (req, res, next) => {
   try {
     logger.info('Obteniendo niños por centro', { id: req.params.id, ip: req.ip });
     const errors = validationResult(req);
