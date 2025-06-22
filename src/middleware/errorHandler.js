@@ -1,4 +1,3 @@
-// src/middleware/errorHandler.js
 const winston = require('winston');
 
 const logger = winston.createLogger({
@@ -9,8 +8,13 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error'
+    }),
+    new winston.transports.File({
+      filename: 'logs/combined.log'
+    }),
   ],
 });
 
@@ -28,5 +32,13 @@ const errorHandler = (err, req, res, next) => {
     data: err.data || [],
   });
 };
-
-module.exports = errorHandler;
+module.exports = (err, req, res, next) => {
+  logger.error('Unhandled error', {
+    error: err.message,
+    ip: req.ip
+  });
+  res.status(err.statusCode || 500).json({
+    error: err.message,
+    data: err.data || null,
+  });
+}

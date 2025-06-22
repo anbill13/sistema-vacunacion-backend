@@ -1,4 +1,3 @@
-// src/index.js
 const express = require('express');
 const cors = require('cors');
 const errorHandler = require('./middleware/errorHandler');
@@ -18,8 +17,7 @@ const logger = winston.createLogger({
   ],
 });
 
-const childrenRoutes = require('./routes/children');
-const guardiansRoutes = require('./routes/guardians');
+const patientRouter = require('./routes/patient'); // Nuevo router
 const centersRoutes = require('./routes/centers');
 const vaccinesRoutes = require('./routes/vaccines');
 const campaignsRoutes = require('./routes/campaigns');
@@ -39,7 +37,7 @@ const countriesRoutes = require('./routes/countries');
 const supplyUsageRoutes = require('./routes/supplyUsage');
 const reportsRoutes = require('./routes/reports');
 const authRoutes = require('./routes/auth');
-const guardians = require('./routes/guardians');
+const tutorsRoutes = require('./routes/tutors');
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
@@ -63,14 +61,14 @@ app.use((req, res, next) => {
 // Configure Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
-// All routes are public (no authentication middleware)
+// Routes
 app.use('/api/login', authRoutes);
 app.use('/api/centers', centersRoutes);
 app.use('/api/users', usersRoutes);
-app.use('/api/children', childrenRoutes);
-app.use('/api/guardians', guardiansRoutes);
+app.use('/api/patients', patientRouter); // Nueva montura para pacientes
+app.use('/api/tutors', tutorsRoutes);
 app.use('/api/countries', countriesRoutes);
-app.use('/api/vaccines', vaccinesRoutes); // Authentication removed
+app.use('/api/vaccines', vaccinesRoutes);
 app.use('/api/vaccine-lots', vaccineLotsRoutes);
 app.use('/api/vaccination-history', vaccinationHistoryRoutes);
 app.use('/api/appointments', appointmentsRoutes);
@@ -85,7 +83,7 @@ app.use('/api/national-calendars', nationalCalendarsRoutes);
 app.use('/api/audits', auditsRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/reports', reportsRoutes);
-app.use('/api/guardians', guardians);
+
 app.use(errorHandler);
 
 app.listen(port, () => {

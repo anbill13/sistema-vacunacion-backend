@@ -1,4 +1,3 @@
-// src/routes/vaccines.js
 const express = require('express');
 const { body, param, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
@@ -382,6 +381,60 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
     res.status(204).send();
   } catch (err) {
     logger.error('Error al eliminar vacuna', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/vaccination-pending/{id}:
+ *   get:
+ *     summary: Obtener las vacunas pendientes para un niño por ID
+ *     tags: [Vaccinations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del niño
+ *     responses:
+ *       200:
+ *         description: Lista de vacunas pendientes obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/PendingVaccination'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Historial o esquemas no encontrados
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/vaccination-pending/:id', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Obteniendo vacunas pendientes por ID de niño', { id_niño: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_niño', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_ObtenerVacunasPendientes');
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    logger.error('Error al obtener vacunas pendientes', { id_niño: req.params.id, error: err.message, ip: req.ip });
     err.statusCode = err.statusCode || 500;
     next(err);
   }
