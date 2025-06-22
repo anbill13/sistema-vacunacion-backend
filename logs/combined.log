@@ -1122,3 +1122,37 @@
 {"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T19:09:03.452Z"}
 {"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T19:09:05.825Z"}
 {"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T19:09:20.532Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T19:10:31.868Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T19:10:32.034Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T19:10:32.066Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T19:10:32.082Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T19:10:32.087Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T19:10:33.974Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T19:10:36.486Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers","params":{},"query":{},"timestamp":"2025-06-22T19:10:41.748Z"}
+{"ip":"::1","level":"info","message":"Obteniendo centros de vacunación","timestamp":"2025-06-22T19:10:41.749Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers/1B5A552D-DE96-4BC9-ADEF-0ECB98422926/patients","params":{},"query":{},"timestamp":"2025-06-22T19:11:42.948Z"}
+{"id":"1B5A552D-DE96-4BC9-ADEF-0ECB98422926","ip":"::1","level":"info","message":"Obteniendo niños por centro","timestamp":"2025-06-22T19:11:42.954Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T19:16:21.594Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T19:16:21.641Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T19:16:21.645Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T19:16:21.647Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T19:16:21.650Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T19:16:24.199Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T19:16:27.111Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers","params":{},"query":{},"timestamp":"2025-06-22T19:17:15.554Z"}
+{"ip":"::1","level":"info","message":"Obteniendo centros de vacunación","timestamp":"2025-06-22T19:17:15.554Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T19:52:18.656Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T19:52:18.780Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T19:52:18.825Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T19:52:18.836Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T19:52:18.839Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T19:52:23.194Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T19:52:25.230Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers/1B5A552D-DE96-4BC9-ADEF-0ECB98422926/patients","params":{},"query":{},"timestamp":"2025-06-22T19:52:50.095Z"}
+{"id":"1B5A552D-DE96-4BC9-ADEF-0ECB98422926","ip":"::1","level":"info","message":"Obteniendo niños por centro","timestamp":"2025-06-22T19:52:50.117Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T19:56:14.810Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T19:59:27.751Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T20:01:02.931Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T20:01:10.538Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T20:02:24.295Z"}

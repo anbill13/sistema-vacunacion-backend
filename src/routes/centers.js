@@ -155,30 +155,140 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *     Patient:
  *       type: object
  *       properties:
- *         id_nino:
+ *         id_paciente:
  *           type: string
  *           format: uuid
  *           description: Identificador único del niño
  *           example: "4A3B2C1D-1234-5678-9012-3456789ABCDE"
- *         nombre:
+ *         nombre_completo:
  *           type: string
- *           description: Nombre del niño
+ *           description: Nombre completo del niño
  *           example: "Juan Pérez"
+ *         identificacion:
+ *           type: string
+ *           description: Identificación del niño
+ *           example: "ID001"
+ *         nacionalidad:
+ *           type: string
+ *           description: Nacionalidad del niño
+ *           example: "Dominicano"
+ *         pais_nacimiento:
+ *           type: string
+ *           description: País de nacimiento del niño
+ *           example: "República Dominicana"
  *         fecha_nacimiento:
  *           type: string
  *           format: date
  *           description: Fecha de nacimiento del niño
  *           example: "2018-05-20"
- *         id_centro:
+ *         genero:
+ *           type: string
+ *           description: Género del niño (M/F)
+ *           example: "M"
+ *         direccion_residencia:
+ *           type: string
+ *           description: Dirección de residencia del niño
+ *           example: "Calle 1, Santo Domingo"
+ *         latitud:
+ *           type: number
+ *           format: float
+ *           description: Latitud de la dirección
+ *           example: 18.4824
+ *         longitud:
+ *           type: number
+ *           format: float
+ *           description: Longitud de la dirección
+ *           example: -69.9269
+ *         id_centro_salud:
  *           type: string
  *           format: uuid
  *           description: ID del centro de vacunación asociado
  *           example: "3031019A-8658-4567-B284-D610A8AC7766"
+ *         contacto_principal:
+ *           type: string
+ *           description: Contacto principal (e.g., Madre, Padre)
+ *           example: "Madre"
+ *         id_salud_nacional:
+ *           type: string
+ *           description: ID de salud nacional
+ *           example: "SN001"
+ *         estado:
+ *           type: string
+ *           description: Estado del niño (e.g., Activo, Inactivo)
+ *           example: "Activo"
+ *         tutores:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id_tutor:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Identificador único del tutor
+ *                 example: "123e4567-e89b-12d3-a456-426614174008"
+ *               nombre:
+ *                 type: string
+ *                 description: Nombre del tutor
+ *                 example: "Juan Pérez"
+ *               relacion:
+ *                 type: string
+ *                 description: Relación con el niño
+ *                 example: "Padre"
+ *               nacionalidad:
+ *                 type: string
+ *                 description: Nacionalidad del tutor
+ *                 example: "Dominicano"
+ *               identificacion:
+ *                 type: string
+ *                 description: Identificación del tutor
+ *                 example: "002-7654321-15"
+ *               telefono:
+ *                 type: string
+ *                 description: Teléfono del tutor
+ *                 example: "809-555-4321"
+ *               email:
+ *                 type: string
+ *                 description: Email del tutor
+ *                 example: "juan.perez@example.com"
+ *               direccion:
+ *                 type: string
+ *                 description: Dirección del tutor
+ *                 example: "Calle 2, La Romana"
+ *               tipo_relacion:
+ *                 type: string
+ *                 description: Tipo de relación (e.g., Padre1, TutorLegal)
+ *                 example: "Padre1"
+ *               estado:
+ *                 type: string
+ *                 description: Estado del tutor
+ *                 example: "Activo"
+ *             required:
+ *               - id_tutor
+ *               - nombre
+ *               - relacion
+ *               - nacionalidad
+ *               - identificacion
+ *               - telefono
+ *               - email
+ *               - direccion
+ *               - tipo_relacion
+ *               - estado
  *       required:
- *         - id_nino
- *         - nombre
+ *         - id_paciente
+ *         - nombre_completo
+ *         - identificacion
+ *         - nacionalidad
+ *         - pais_nacimiento
  *         - fecha_nacimiento
- *         - id_centro
+ *         - genero
+ *         - direccion_residencia
+ *         - latitud
+ *         - longitud
+ *         - id_centro_salud
+ *         - contacto_principal
+ *         - id_salud_nacional
+ *         - estado
+ *         - tutores
  * tags:
  *   - name: Centers
  *     description: Gestión de centros de vacunación
@@ -411,7 +521,6 @@ router.post('/', validateCenter, async (req, res, next) => {
       .input('director', sql.NVarChar, req.body.director || null)
       .input('sitio_web', sql.NVarChar, req.body.sitio_web || null)
       .execute('sp_CrearCentroVacunacion');
-    // Assuming the stored procedure returns the full center object
     const newCenter = result.recordset[0];
     res.status(201).json(newCenter);
   } catch (err) {
@@ -499,7 +608,7 @@ router.post('/', validateCenter, async (req, res, next) => {
  */
 router.put('/:id', [validateUUID, validateCenter], async (req, res, next) => {
   try {
-    logger.info('Actualizando centro', { id: req.params.id, nombre: req.body.nombre_centro, ip: req.ip });
+    logger.info('Actualando centro', { id: req.params.id, nombre: req.body.nombre_centro, ip: req.ip });
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
@@ -723,7 +832,9 @@ router.get('/:id/patients', validateUUID, async (req, res, next) => {
       .request()
       .input('id_centro', sql.UniqueIdentifier, req.params.id)
       .execute('sp_ObtenerNinosPorCentro');
-    res.status(200).json(result.recordset);
+    const jsonString = result.recordset[0][Object.keys(result.recordset[0])[0]];
+    const patients = JSON.parse(jsonString);
+    res.status(200).json(patients);
   } catch (err) {
     logger.error('Error al obtener niños', { id: req.params.id, error: err.message, ip: req.ip });
     err.statusCode = err.statusCode || 500;
