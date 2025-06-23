@@ -777,3 +777,15 @@
 {"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T20:01:03.489Z"}
 {"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T20:01:11.062Z"}
 {"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T20:02:24.862Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T20:06:11.543Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T22:20:12.328Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T22:26:49.008Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-22T22:27:35.774Z"}
+{"error":"Cannot open server 'sistemavacunacionapp' requested by the login. Client with IP address '148.0.176.145' is not allowed to access the server.  To enable access, use the Azure Management Portal or run sp_set_firewall_rule on the master database to create a firewall rule for this IP address or address range.  It may take up to five minutes for this change to take effect.","level":"error","message":"❌ Fallo en la conexión a la base de datos","timestamp":"2025-06-22T23:55:45.259Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-23T03:34:51.005Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-23T04:34:19.457Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-23T04:43:00.471Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-23T04:45:40.868Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-23T04:48:29.676Z"}
+{"error":"Cannot open server 'sistemavacunacionapp' requested by the login. Client with IP address '179.61.31.86' is not allowed to access the server.  To enable access, use the Azure Management Portal or run sp_set_firewall_rule on the master database to create a firewall rule for this IP address or address range.  It may take up to five minutes for this change to take effect.","level":"error","message":"❌ Fallo en la conexión a la base de datos","timestamp":"2025-06-23T13:06:31.730Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-23T13:14:47.376Z"}

@@ -1156,3 +1156,201 @@
 {"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T20:01:02.931Z"}
 {"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T20:01:10.538Z"}
 {"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T20:02:24.295Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T20:06:10.982Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T20:06:16.679Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T20:06:16.763Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T20:06:16.767Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T20:06:16.769Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T20:06:16.771Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T20:06:19.499Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T20:06:22.076Z"}
+{"ip":"::1","level":"info","message":"GET /api/centers/1B5A552D-DE96-4BC9-ADEF-0ECB98422926/patients","params":{},"query":{},"timestamp":"2025-06-22T20:06:29.303Z"}
+{"id":"1B5A552D-DE96-4BC9-ADEF-0ECB98422926","ip":"::1","level":"info","message":"Obteniendo niños por centro","timestamp":"2025-06-22T20:06:29.306Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T21:20:14.088Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T21:20:14.153Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T21:20:14.155Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T21:20:14.163Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T21:20:14.263Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T21:20:19.950Z"}
+{"ip":"::1","level":"info","message":"GET /api/tutors","params":{},"query":{},"timestamp":"2025-06-22T21:22:44.515Z"}
+{"ip":"::1","level":"info","message":"Obteniendo todos los tutores","timestamp":"2025-06-22T21:22:44.522Z"}
+{"body":{"direccion":"Calle 1, La Romana","email":"maria.rodriguez@example.com","estado":"Activo","id_niño":"","identificacion":"001-1234567-8","nacionalidad":"Dominicano","nombre":"María Rodríguez","relacion":"Madre","telefono":"809-555-1234"},"ip":"::1","level":"info","message":"POST /api/tutors","params":{},"query":{},"timestamp":"2025-06-22T21:23:12.602Z"}
+{"id_niño":"","ip":"::1","level":"info","message":"Creando tutor","nombre":"María Rodríguez","timestamp":"2025-06-22T21:23:12.611Z"}
+{"error":"Error al crear tutor","ip":"::1","level":"error","message":"Unhandled error","timestamp":"2025-06-22T21:23:12.612Z"}
+{"errors":[{"location":"body","msg":"ID de niño inválido","path":"id_niño","type":"field","value":""}],"ip":"::1","level":"warn","message":"Validación fallida","timestamp":"2025-06-22T21:23:12.611Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Error al crear tutor","timestamp":"2025-06-22T21:23:12.612Z"}
+{"ip":"::1","level":"info","message":"GET /api/tutors","params":{},"query":{},"timestamp":"2025-06-22T21:45:59.889Z"}
+{"ip":"::1","level":"info","message":"Obteniendo todos los tutores","timestamp":"2025-06-22T21:45:59.901Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T22:20:11.755Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T22:20:21.779Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T22:20:21.986Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T22:20:21.996Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T22:20:22.002Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T22:20:22.004Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T22:20:28.659Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T22:20:31.045Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T22:20:34.429Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T22:20:34.527Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T22:20:34.539Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T22:20:34.540Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T22:20:34.543Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T22:20:38.511Z"}
+{"ip":"::1","level":"info","message":"GET /api/patients","params":{},"query":{},"timestamp":"2025-06-22T22:21:07.625Z"}
+{"ip":"::1","level":"info","message":"Obteniendo todos los pacientes con tutores","timestamp":"2025-06-22T22:21:07.629Z"}
+{"ip":"::1","level":"warn","message":"No patients found in Niños table","timestamp":"2025-06-22T22:21:08.603Z"}
+{"body":{"fecha_nacimiento":"2013-09-25","genero":"M","identificacion":"001-4299937475-3","nacionalidad":"Dominicano","nombre_completo":"Pedro Díaz 4","pais_nacimiento":"República Dominicana","tutor_ids":["123e4567-e89b-12d3-a456-426614174020"],"tutores":[{"direccion":"Calle 2, La Romana","email":"juan.perez@example.com","identificacion":"002-7654321-15","nacionalidad":"Dominicano","nombre":"Juan Pérez","relacion":"Padre","telefono":"809-555-4321","tipo_relacion":"Padre1"}]},"ip":"::1","level":"info","message":"POST /api/patients","params":{},"query":{},"timestamp":"2025-06-22T22:21:52.100Z"}
+{"ip":"::1","level":"info","message":"Creando paciente con tutores","nombre_completo":"Pedro Díaz 4","timestamp":"2025-06-22T22:21:52.164Z","tutor_count":2}
+{"error":"La nacionalidad no existe en la tabla Paises.","ip":"::1","level":"error","message":"Error al crear paciente","stack":"RequestError: La nacionalidad no existe en la tabla Paises.\n    at handleError (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\mssql\\lib\\tedious\\request.js:738:15)\n    at Connection.emit (node:events:518:28)\n    at Connection.emit (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\connection.js:970:18)\n    at RequestTokenHandler.onErrorMessage (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\token\\handler.js:284:21)\n    at Readable.<anonymous> (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\token\\token-stream-parser.js:19:33)\n    at Readable.emit (node:events:518:28)\n    at addChunk (node:internal/streams/readable:561:12)\n    at readableAddChunkPushObjectMode (node:internal/streams/readable:538:3)\n    at Readable.push (node:internal/streams/readable:393:5)\n    at nextAsync (node:internal/streams/from:194:22)","timestamp":"2025-06-22T22:21:53.236Z"}
+{"error":"La nacionalidad no existe en la tabla Paises.","ip":"::1","level":"error","message":"Unhandled error","timestamp":"2025-06-22T22:21:53.238Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T22:23:32.885Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T22:23:33.055Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T22:23:33.065Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T22:23:33.066Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T22:23:33.070Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T22:23:35.822Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T22:23:39.039Z"}
+{"ip":"::1","level":"info","message":"GET /api/tutors","params":{},"query":{},"timestamp":"2025-06-22T22:23:48.265Z"}
+{"ip":"::1","level":"info","message":"Obteniendo todos los tutores","timestamp":"2025-06-22T22:23:48.266Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T22:26:23.001Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T22:26:23.128Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:23.152Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:23.155Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:23.158Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T22:26:27.423Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:29.433Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T22:26:32.161Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:32.252Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:32.255Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T22:26:32.260Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:32.261Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T22:26:34.623Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:36.535Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T22:26:48.443Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T22:26:51.920Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T22:26:51.976Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:51.985Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:51.986Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:51.989Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-22T22:26:54.713Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T22:26:56.646Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T22:27:35.254Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-22T22:27:51.859Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-22T22:27:51.877Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-22T22:27:51.878Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-22T22:27:51.878Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-22T22:27:51.978Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T22:28:00.845Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-22T23:55:44.715Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-22T23:55:44.978Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-23T03:34:50.446Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-23T03:34:57.842Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-23T03:34:57.862Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-23T03:34:57.871Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-23T03:34:57.872Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-23T03:34:58.008Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-23T03:35:03.768Z"}
+{"ip":"::1","level":"info","message":"GET /api/tutors","params":{},"query":{},"timestamp":"2025-06-23T03:36:43.269Z"}
+{"ip":"::1","level":"info","message":"Obteniendo todos los tutores","timestamp":"2025-06-23T03:36:43.270Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-23T04:26:50.534Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-23T04:26:50.657Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-23T04:26:50.672Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-23T04:26:50.676Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-23T04:26:50.678Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-23T04:26:53.806Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-23T04:26:56.100Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-23T04:26:59.310Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-23T04:26:59.350Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-23T04:26:59.385Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-23T04:26:59.386Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-23T04:26:59.387Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-23T04:27:00.889Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-23T04:27:03.230Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-23T04:34:18.914Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-23T04:35:00.191Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-23T04:35:00.232Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-23T04:35:00.237Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-23T04:35:00.238Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-23T04:35:00.240Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-23T04:35:03.116Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-23T04:35:05.032Z"}
+{"ip":"::1","level":"info","message":"GET /api/tutors","params":{},"query":{},"timestamp":"2025-06-23T04:35:10.087Z"}
+{"ip":"::1","level":"info","message":"Obteniendo todos los tutores","timestamp":"2025-06-23T04:35:10.088Z"}
+{"body":{"direccion":"Calle H, #11 villa marina","email":"maria.rodriguez@example.com","id_niño":null,"identificacion":"001-1234567-8","nacionalidad":"Dominicano","nombre":"jhonny Hernandez","relacion":"padre","telefono":"809-555-1234"},"ip":"::1","level":"info","message":"POST /api/tutors","params":{},"query":{},"timestamp":"2025-06-23T04:36:13.797Z"}
+{"id_niño":"No proporcionado","ip":"::1","level":"info","message":"Creando tutor","nombre":"jhonny Hernandez","timestamp":"2025-06-23T04:36:13.803Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Unhandled error","timestamp":"2025-06-23T04:36:13.805Z"}
+{"errors":[{"location":"body","msg":"ID de niño inválido","path":"id_niño","type":"field","value":null},{"location":"body","msg":"Relación inválida","path":"relacion","type":"field","value":"padre"}],"ip":"::1","level":"warn","message":"Validación fallida","timestamp":"2025-06-23T04:36:13.804Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Error al crear tutor","timestamp":"2025-06-23T04:36:13.804Z"}
+{"body":{"direccion":"Calle H, #11 villa marina","email":"maria.rodriguez@example.com","id_niño":null,"identificacion":"001-1234567-8","nacionalidad":"Dominicano","nombre":"jhonny Hernandez","relacion":"padre","telefono":"809-555-1234"},"ip":"::1","level":"info","message":"POST /api/tutors","params":{},"query":{},"timestamp":"2025-06-23T04:36:18.289Z"}
+{"id_niño":"No proporcionado","ip":"::1","level":"info","message":"Creando tutor","nombre":"jhonny Hernandez","timestamp":"2025-06-23T04:36:18.290Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Unhandled error","timestamp":"2025-06-23T04:36:18.291Z"}
+{"errors":[{"location":"body","msg":"ID de niño inválido","path":"id_niño","type":"field","value":null},{"location":"body","msg":"Relación inválida","path":"relacion","type":"field","value":"padre"}],"ip":"::1","level":"warn","message":"Validación fallida","timestamp":"2025-06-23T04:36:18.290Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Error al crear tutor","timestamp":"2025-06-23T04:36:18.291Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-23T04:42:36.532Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-23T04:42:36.650Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-23T04:42:36.662Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-23T04:42:36.663Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-23T04:42:36.664Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-23T04:42:39.468Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-23T04:42:41.859Z"}
+{"body":{"direccion":"Calle 1, La Romana","email":"maria.rodriguez@example.com","id_niño":null,"identificacion":"001-1234567-8","nacionalidad":"Dominicano","nombre":"María Rodríguez","relacion":"Madre","telefono":"809-555-1234"},"ip":"::1","level":"info","message":"POST /api/tutors","params":{},"query":{},"timestamp":"2025-06-23T04:42:43.893Z"}
+{"id_niño":"No proporcionado","ip":"::1","level":"info","message":"Creando tutor","nombre":"María Rodríguez","timestamp":"2025-06-23T04:42:43.894Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Unhandled error","timestamp":"2025-06-23T04:42:43.895Z"}
+{"errors":[{"location":"body","msg":"ID de niño inválido","path":"id_niño","type":"field","value":null}],"ip":"::1","level":"warn","message":"Validación fallida","timestamp":"2025-06-23T04:42:43.895Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Error al crear tutor","timestamp":"2025-06-23T04:42:43.895Z"}
+{"body":{"direccion":"Calle 1, La Romana","email":"maria.rodriguez@example.com","id_niño":null,"identificacion":"001-1234567-8","nacionalidad":"Dominicano","nombre":"María Rodríguez","relacion":"Madre","telefono":"809-555-1234"},"ip":"::1","level":"info","message":"POST /api/tutors","params":{},"query":{},"timestamp":"2025-06-23T04:42:46.311Z"}
+{"id_niño":"No proporcionado","ip":"::1","level":"info","message":"Creando tutor","nombre":"María Rodríguez","timestamp":"2025-06-23T04:42:46.312Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Unhandled error","timestamp":"2025-06-23T04:42:46.313Z"}
+{"errors":[{"location":"body","msg":"ID de niño inválido","path":"id_niño","type":"field","value":null}],"ip":"::1","level":"warn","message":"Validación fallida","timestamp":"2025-06-23T04:42:46.312Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Error al crear tutor","timestamp":"2025-06-23T04:42:46.312Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-23T04:42:59.933Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-23T04:43:13.614Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-23T04:43:13.692Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-23T04:43:13.705Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-23T04:43:13.709Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-23T04:43:13.710Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-23T04:43:15.518Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-23T04:43:17.573Z"}
+{"body":{"direccion":"Calle 1, La Romana","email":"maria.rodriguez@example.com","id_niño":null,"identificacion":"001-1234567-8","nacionalidad":"Dominicano","nombre":"María Rodríguez","relacion":"Madre","telefono":"809-555-1234"},"ip":"::1","level":"info","message":"POST /api/tutors","params":{},"query":{},"timestamp":"2025-06-23T04:43:19.129Z"}
+{"id_niño":"No proporcionado","ip":"::1","level":"info","message":"Creando tutor","nombre":"María Rodríguez","timestamp":"2025-06-23T04:43:19.137Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Unhandled error","timestamp":"2025-06-23T04:43:19.139Z"}
+{"errors":[{"location":"body","msg":"ID de niño inválido","path":"id_niño","type":"field","value":null}],"ip":"::1","level":"warn","message":"Validación fallida","timestamp":"2025-06-23T04:43:19.137Z"}
+{"error":"Validación fallida","ip":"::1","level":"error","message":"Error al crear tutor","timestamp":"2025-06-23T04:43:19.138Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-23T04:45:40.307Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-23T04:45:48.295Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-23T04:45:48.362Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-23T04:45:48.372Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-23T04:45:48.380Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-23T04:45:48.382Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-23T04:45:51.427Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-23T04:45:53.437Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-23T04:46:12.050Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-23T04:46:12.091Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-23T04:46:12.099Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-23T04:46:12.105Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-23T04:46:12.106Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-23T04:46:13.566Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-23T04:46:15.682Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-23T04:48:29.131Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-23T04:48:32.238Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-23T04:48:32.299Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-23T04:48:32.319Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-23T04:48:32.323Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-23T04:48:32.324Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-23T04:48:33.848Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-23T04:48:35.874Z"}
+{"ip":"::1","level":"info","message":"GET /api/tutors","params":{},"query":{},"timestamp":"2025-06-23T04:48:43.821Z"}
+{"ip":"::1","level":"info","message":"Obteniendo todos los tutores","timestamp":"2025-06-23T04:48:43.822Z"}
+{"body":{"direccion":"Calle 1, La Romana","email":"maria.rodriguez@example.com","id_niño":null,"identificacion":"001-1234567-8","nacionalidad":"Dominicano","nombre":"María Rodríguez","relacion":"Madre","telefono":"809-555-1234"},"ip":"::1","level":"info","message":"POST /api/tutors","params":{},"query":{},"timestamp":"2025-06-23T04:48:56.091Z"}
+{"id_niño":"No proporcionado","ip":"::1","level":"info","message":"Creando tutor","nombre":"María Rodríguez","timestamp":"2025-06-23T04:48:56.098Z"}
+{"body":{"fecha_nacimiento":"2013-09-25","genero":"M","identificacion":"PD123456","nacionalidad":"Dominicano","nombre_completo":"Pedro Díaz","pais_nacimiento":"República Dominicana","tutor_ids":["BFADAB56-1B20-4CE0-849E-C2F407DFDD91"],"tutores":[{"direccion":"Calle 2, La Romana","email":"juan.perez@example.com","identificacion":"002-7654321-15","nacionalidad":"Dominicano","nombre":"Juan Pérez","relacion":"Padre","telefono":"809-555-4321","tipo_relacion":"Padre1"}]},"ip":"::1","level":"info","message":"POST /api/patients","params":{},"query":{},"timestamp":"2025-06-23T04:49:42.261Z"}
+{"ip":"::1","level":"info","message":"Creando paciente con tutores","nombre_completo":"Pedro Díaz","timestamp":"2025-06-23T04:49:42.265Z","tutor_count":2}
+{"id_niño":"0F7D5047-5B0F-40C6-B8B8-4AA7ECD5EAE0","ip":"::1","level":"info","message":"Paciente creado exitosamente","timestamp":"2025-06-23T04:49:43.411Z"}
+{"body":{"fecha_nacimiento":"2013-09-25","genero":"M","identificacion":"PD123456","nacionalidad":"Dominicano","nombre_completo":"Pedro Díaz","pais_nacimiento":"República Dominicana","tutor_ids":["BFADAB56-1B20-4CE0-849E-C2F407DFDD91"]},"ip":"::1","level":"info","message":"POST /api/patients","params":{},"query":{},"timestamp":"2025-06-23T04:50:36.809Z"}
+{"ip":"::1","level":"info","message":"Creando paciente con tutores","nombre_completo":"Pedro Díaz","timestamp":"2025-06-23T04:50:36.811Z","tutor_count":1}
+{"error":"Operand type clash: nvarchar is incompatible with TutorType","ip":"::1","level":"error","message":"Error al crear paciente","stack":"RequestError: Operand type clash: nvarchar is incompatible with TutorType\n    at handleError (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\mssql\\lib\\tedious\\request.js:738:15)\n    at Connection.emit (node:events:518:28)\n    at Connection.emit (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\connection.js:970:18)\n    at RequestTokenHandler.onErrorMessage (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\token\\handler.js:284:21)\n    at Readable.<anonymous> (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\token\\token-stream-parser.js:19:33)\n    at Readable.emit (node:events:518:28)\n    at addChunk (node:internal/streams/readable:561:12)\n    at readableAddChunkPushObjectMode (node:internal/streams/readable:538:3)\n    at Readable.push (node:internal/streams/readable:393:5)\n    at nextAsync (node:internal/streams/from:194:22)","timestamp":"2025-06-23T04:50:37.606Z"}
+{"error":"Operand type clash: nvarchar is incompatible with TutorType","ip":"::1","level":"error","message":"Unhandled error","timestamp":"2025-06-23T04:50:37.607Z"}
+{"ip":"::1","level":"info","message":"GET /api/patients","params":{},"query":{},"timestamp":"2025-06-23T04:51:06.608Z"}
+{"ip":"::1","level":"info","message":"Obteniendo todos los pacientes con tutores","timestamp":"2025-06-23T04:51:06.609Z"}
+{"count":2,"ip":"::1","level":"info","message":"Patients retrieved successfully","timestamp":"2025-06-23T04:51:06.893Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-23T13:06:31.271Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-23T13:14:46.826Z"}

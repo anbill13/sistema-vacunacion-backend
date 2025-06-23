@@ -19,9 +19,25 @@ const logger = winston.createLogger({
 });
 
 const validateTutor = [
-  body('id_niño').isUUID().withMessage('ID de niño inválido'),
+  body('id_niño')
+    .optional({ nullable: true })
+    .custom(value => {
+      if (value === null) return true;
+      if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+        throw new Error('ID de niño inválido');
+      }
+      return true;
+    }).withMessage('ID de niño inválido'),
   body('nombre').notEmpty().isString().withMessage('Nombre es requerido'),
-  body('relacion').isIn(['Madre', 'Padre', 'Tutor Legal']).withMessage('Relación inválida'),
+  body('relacion')
+    .notEmpty().withMessage('Relación es requerida')
+    .customSanitizer(value => {
+      if (typeof value === 'string') {
+        return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+      }
+      return value;
+    })
+    .isIn(['Madre', 'Padre', 'Tutor Legal']).withMessage('Relación inválida'),
   body('nacionalidad').notEmpty().isString().withMessage('Nacionalidad es requerida'),
   body('identificacion').optional().isString().withMessage('Identificación debe ser una cadena válida'),
   body('telefono').optional().isString().withMessage('Teléfono debe ser una cadena válida'),
@@ -45,7 +61,6 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *     Tutor:
  *       type: object
  *       required:
- *         - id_niño
  *         - nombre
  *         - relacion
  *         - nacionalidad
@@ -57,7 +72,8 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *         id_niño:
  *           type: string
  *           format: uuid
- *           description: ID del niño asociado
+ *           description: ID del niño asociado (opcional)
+ *           nullable: true
  *         nombre:
  *           type: string
  *           description: Nombre completo del tutor
@@ -71,22 +87,26 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *         identificacion:
  *           type: string
  *           description: Identificación del tutor (opcional)
+ *           nullable: true
  *         telefono:
  *           type: string
  *           description: Teléfono de contacto (opcional)
+ *           nullable: true
  *         email:
  *           type: string
  *           description: Email de contacto (opcional)
+ *           nullable: true
  *         direccion:
  *           type: string
  *           description: Dirección del tutor (opcional)
+ *           nullable: true
  *         estado:
  *           type: string
  *           enum: [Activo, Inactivo]
  *           description: Estado del tutor
  *       example:
  *         id_tutor: "123e4567-e89b-12d3-a456-426614174020"
- *         id_niño: "EF835A71-2B1D-4280-87B3-289606482EC7"
+ *         id_niño: null
  *         nombre: "María Rodríguez"
  *         relacion: "Madre"
  *         nacionalidad: "Dominicano"
@@ -98,7 +118,6 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *     TutorInput:
  *       type: object
  *       required:
- *         - id_niño
  *         - nombre
  *         - relacion
  *         - nacionalidad
@@ -106,6 +125,7 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *         id_niño:
  *           type: string
  *           format: uuid
+ *           nullable: true
  *         nombre:
  *           type: string
  *         relacion:
@@ -126,6 +146,15 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *         direccion:
  *           type: string
  *           nullable: true
+ *       example:
+ *         id_niño: null
+ *         nombre: "María Rodríguez"
+ *         relacion: "Madre"
+ *         nacionalidad: "Dominicano"
+ *         identificacion: "001-1234567-8"
+ *         telefono: "809-555-1234"
+ *         email: "maria.rodriguez@example.com"
+ *         direccion: "Calle 1, La Romana"
  */
 
 /**
@@ -248,7 +277,11 @@ router.get('/:id', validateUUID, async (req, res, next) => {
  */
 router.post('/', validateTutor, async (req, res, next) => {
   try {
-    logger.info('Creando tutor', { id_niño: req.body.id_niño, nombre: req.body.nombre, ip: req.ip });
+    logger.info('Creando tutor', {
+      id_niño: req.body.id_niño || 'No proporcionado',
+      nombre: req.body.nombre,
+      ip: req.ip
+    });
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
@@ -258,23 +291,31 @@ router.post('/', validateTutor, async (req, res, next) => {
       throw error;
     }
     const pool = await poolPromise;
-    const result = await pool
-      .request()
-      .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
+    const request = pool.request()
+      .input('id_niño', sql.UniqueIdentifier, req.body.id_niño || null)
       .input('nombre', sql.NVarChar, req.body.nombre)
       .input('relacion', sql.NVarChar, req.body.relacion)
       .input('nacionalidad', sql.NVarChar, req.body.nacionalidad)
-      .input('identificacion', sql.NVarChar, req.body.identificacion)
-      .input('telefono', sql.NVarChar, req.body.telefono)
-      .input('email', sql.NVarChar, req.body.email)
-      .input('direccion', sql.NVarChar, req.body.direccion)
-      .execute('sp_CrearTutor');
-    res.status(201).json({ id_tutor: result.recordset[0].id_tutor });
+      .input('identificacion', sql.NVarChar, req.body.identificacion || null)
+      .input('telefono', sql.NVarChar, req.body.telefono || null)
+      .input('email', sql.NVarChar, req.body.email || null)
+      .input('direccion', sql.NVarChar, req.body.direccion || null)
+      .output('id_tutor_output', sql.UniqueIdentifier);
+
+    const result = await request.execute('sp_CrearTutor');
+    const id_tutor = result.output.id_tutor_output;
+
+    if (!id_tutor) {
+      logger.warn('No se obtuvo id_tutor del procedimiento almacenado', { ip: req.ip });
+      throw new Error('No se pudo crear el tutor');
+    }
+
+    res.status(201).json({ id_tutor });
   } catch (err) {
     logger.error('Error al crear tutor', { error: err.message, ip: req.ip });
-    const error = new Error('Error al crear tutor');
-    error.statusCode = err.number === 50000 ? 400 : 500;
-    error.data = err.message;
+    const error = new Error(err.message || 'Error al crear tutor');
+    error.statusCode = 400; // Forzamos 400 para errores de validación
+    error.data = err.data || { message: err.message };
     next(error);
   }
 });
@@ -311,7 +352,12 @@ router.post('/', validateTutor, async (req, res, next) => {
  */
 router.put('/:id', [validateUUID, validateTutor], async (req, res, next) => {
   try {
-    logger.info('Actualizando tutor', { id: req.params.id, id_niño: req.body.id_niño, ip: req.ip });
+    logger.info('Actualizando tutor', {
+      id: req.params.id,
+      id_niño: req.body.id_niño || 'No proporcionado',
+      nombre: req.body.nombre,
+      ip: req.ip
+    });
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
@@ -334,20 +380,22 @@ router.put('/:id', [validateUUID, validateTutor], async (req, res, next) => {
     await pool
       .request()
       .input('id_tutor', sql.UniqueIdentifier, req.params.id)
-      .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
+      .input('id_niño', sql.UniqueIdentifier, req.body.id_niño || null)
       .input('nombre', sql.NVarChar, req.body.nombre)
       .input('relacion', sql.NVarChar, req.body.relacion)
       .input('nacionalidad', sql.NVarChar, req.body.nacionalidad)
-      .input('identificacion', sql.NVarChar, req.body.identificacion)
-      .input('telefono', sql.NVarChar, req.body.telefono)
-      .input('email', sql.NVarChar, req.body.email)
-      .input('direccion', sql.NVarChar, req.body.direccion)
+      .input('identificacion', sql.NVarChar, req.body.identificacion || null)
+      .input('telefono', sql.NVarChar, req.body.telefono || null)
+      .input('email', sql.NVarChar, req.body.email || null)
+      .input('direccion', sql.NVarChar, req.body.direccion || null)
       .execute('sp_ActualizarTutor');
     res.status(204).send();
   } catch (err) {
     logger.error('Error al actualizar tutor', { id: req.params.id, error: err.message, ip: req.ip });
-    err.statusCode = err.statusCode || 500;
-    next(err);
+    const error = new Error(err.message || 'Error al actualizar tutor');
+    error.statusCode = err.statusCode || 500;
+    error.data = err.message ? { message: err.message } : null;
+    next(error);
   }
 });
 
@@ -369,7 +417,7 @@ router.put('/:id', [validateUUID, validateTutor], async (req, res, next) => {
  *       204:
  *         description: Tutor eliminado exitosamente
  *       400:
- *         description: ID inválido
+ *         description: ID inválido o tutor vinculado a un niño
  *       404:
  *         description: Tutor no encontrado
  *       500:
@@ -404,8 +452,10 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
     res.status(204).send();
   } catch (err) {
     logger.error('Error al eliminar tutor', { id: req.params.id, error: err.message, ip: req.ip });
-    err.statusCode = err.statusCode || 500;
-    next(err);
+    const error = new Error(err.message || 'Error al eliminar tutor');
+    error.statusCode = err.message.includes('vinculado a un niño') ? 400 : (err.statusCode || 500);
+    error.data = err.message ? { message: err.message } : null;
+    next(error);
   }
 });
 
