@@ -61,8 +61,8 @@ app.use((req, res, next) => {
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Routes
-app.use('/', authRoutes); // Mounts /login at /login
-app.use('/api', authRoutes); // Also available at /api/login for consistency
+app.use('/', authRoutes);
+app.use('/api', authRoutes);
 app.use('/api/centers', centersRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/patients', patientRouter);

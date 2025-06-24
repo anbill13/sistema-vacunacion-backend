@@ -2177,3 +2177,10 @@
 {"level":"info","message":"Server running on port 3000","timestamp":"2025-06-24T18:27:46.755Z"}
 {"level":"info","message":"Server running on port 3000","timestamp":"2025-06-24T18:38:32.367Z"}
 {"level":"info","message":"Server running on port 3000","timestamp":"2025-06-24T18:52:21.967Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-24T18:58:51.234Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-24T18:58:53.527Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-24T18:58:53.543Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-24T18:58:53.546Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-24T18:58:53.548Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-24T18:58:53.633Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-24T18:58:58.785Z"}
