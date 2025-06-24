@@ -634,4 +634,76 @@ router.get('/:id/children', validateUUID, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/tutors/{id}/patients/by-user/{userId}:
+ *   get:
+ *     summary: Obtener los pacientes asociados a un tutor por ID de tutor y usuario
+ *     tags: [Tutors]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del tutor
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del usuario asociado al tutor
+ *     responses:
+ *       200:
+ *         description: Lista de pacientes obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Niño'
+ *       400:
+ *         description: ID de tutor o usuario inválido
+ *       404:
+ *         description: Tutor o usuario no encontrado, o no están asociados
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/:id/patients/by-user/:userId', [validateUUID, param('userId').isUUID().withMessage('ID de usuario inválido')], async (req, res, next) => {
+  try {
+    logger.info('Obteniendo pacientes por tutor y usuario', { id_tutor: req.params.id, id_usuario: req.params.userId, ip: req.ip });
+    
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id_tutor: req.params.id, id_usuario: req.params.userId, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
+
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_tutor', sql.UniqueIdentifier, req.params.id)
+      .input('id_usuario', sql.UniqueIdentifier, req.params.userId)
+      .execute('sp_ObtenerPacientesPorTutorYUsuario');
+
+    if (result.recordset.length === 0) {
+      logger.info('No se encontraron pacientes para el tutor y usuario', { id_tutor: req.params.id, id_usuario: req.params.userId, ip: req.ip });
+      return res.status(200).json([]);
+    }
+
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    logger.error('Error al obtener pacientes por tutor y usuario', { id_tutor: req.params.id, id_usuario: req.params.userId, error: err.message, ip: req.ip });
+    const error = new Error(err.message || 'Error al obtener pacientes');
+    error.statusCode = err.message.includes('no existe') || err.message.includes('no está asociado') ? 404 : (err.statusCode || 500);
+    error.data = err.message ? { message: err.message } : null;
+    next(error);
+  }
+});
+
 module.exports = router;
