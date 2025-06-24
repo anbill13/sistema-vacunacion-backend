@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
-const errorHandler = require('./middleware/errorHandler');
 const winston = require('winston');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger');
 require('dotenv').config();
 
 const logger = winston.createLogger({
@@ -13,11 +14,13 @@ const logger = winston.createLogger({
   transports: [
     new winston.transports.Console(),
     new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  ]
 });
 
-const patientRouter = require('./routes/patient'); // Nuevo router
+// Import routes
+const authRoutes = require('./routes/auth');
+const patientRouter = require('./routes/patient');
 const centersRoutes = require('./routes/centers');
 const vaccinesRoutes = require('./routes/vaccines');
 const campaignsRoutes = require('./routes/campaigns');
@@ -36,11 +39,7 @@ const vaccinationHistoryRoutes = require('./routes/vaccinationHistory');
 const countriesRoutes = require('./routes/countries');
 const supplyUsageRoutes = require('./routes/supplyUsage');
 const reportsRoutes = require('./routes/reports');
-const authRoutes = require('./routes/auth');
 const tutorsRoutes = require('./routes/tutors');
-
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpecs = require('./config/swagger');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -53,7 +52,7 @@ app.use((req, res, next) => {
     body: req.body,
     params: req.params,
     query: req.query,
-    ip: req.ip,
+    ip: req.ip
   });
   next();
 });
@@ -62,10 +61,11 @@ app.use((req, res, next) => {
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Routes
-app.use('/api/login', authRoutes);
+app.use('/', authRoutes); // Mounts /login at /login
+app.use('/api', authRoutes); // Also available at /api/login for consistency
 app.use('/api/centers', centersRoutes);
 app.use('/api/users', usersRoutes);
-app.use('/api/patients', patientRouter); // Nueva montura para pacientes
+app.use('/api/patients', patientRouter);
 app.use('/api/tutors', tutorsRoutes);
 app.use('/api/countries', countriesRoutes);
 app.use('/api/vaccines', vaccinesRoutes);
@@ -84,7 +84,14 @@ app.use('/api/audits', auditsRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/reports', reportsRoutes);
 
-app.use(errorHandler);
+// Error handling middleware
+app.use((err, req, res, next) => {
+  logger.error(err.message, { stack: err.stack, ip: req.ip });
+  res.status(err.statusCode || 500).json({
+    error: err.message,
+    ...(err.details && { details: err.details })
+  });
+});
 
 app.listen(port, () => {
   logger.info(`Server running on port ${port}`);

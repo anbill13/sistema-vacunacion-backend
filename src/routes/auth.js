@@ -2,9 +2,12 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
 const winston = require('winston');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 
 const router = express.Router();
 
+// Configure Winston logger
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
@@ -14,54 +17,15 @@ const logger = winston.createLogger({
   transports: [
     new winston.transports.Console(),
     new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  ]
 });
-
-/**
- * @swagger
- * openapi: 3.0.3
- * info:
- *   title: Authentication API
- *   description: API para autenticación de usuarios en el sistema de vacunación
- *   version: 1.0.0
- * servers:
- *   - url: /api
- *     description: Base URL for the API
- * components:
- *   schemas:
- *     LoginResponse:
- *       type: object
- *       properties:
- *         message:
- *           type: string
- *           example: "Login successful"
- *         token:
- *           type: string
- *           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *         user:
- *           type: object
- *           properties:
- *             id_usuario:
- *               type: string
- *               format: uuid
- *               example: "3031019A-8658-4567-B284-D610A8AC7766"
- *             username:
- *               type: string
- *               example: "juanperez"
- *             rol:
- *               type: string
- *               example: "doctor"
- * tags:
- *   - name: Authentication
- *     description: Gestión de autenticación
- */
 
 /**
  * @swagger
  * /login:
  *   post:
- *     summary: Inicia sesión de usuario
+ *     summary: Authenticate a user and generate a JWT token
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -69,22 +33,47 @@ const logger = winston.createLogger({
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - username
+ *               - password
  *             properties:
  *               username:
  *                 type: string
- *                 example: "juanperez"
+ *                 example: anbill13
  *               password:
  *                 type: string
- *                 example: "password123"
+ *                 example: 123
  *     responses:
  *       200:
- *         description: Inicio de sesión exitoso
+ *         description: Login successful, returns JWT token and user details
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/LoginResponse'
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Login successful
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id_usuario:
+ *                       type: string
+ *                       example: 3031019A-8658-4567-B284-D610A8AC7766
+ *                     username:
+ *                       type: string
+ *                       example: anbill13
+ *                     email:
+ *                       type: string
+ *                       example: usuario@example.com
+ *                     rol:
+ *                       type: string
+ *                       example: user
  *       400:
- *         description: Validación fallida
+ *         description: Invalid request data
  *         content:
  *           application/json:
  *             schema:
@@ -92,8 +81,8 @@ const logger = winston.createLogger({
  *               properties:
  *                 error:
  *                   type: string
- *                   example: Validación fallida
- *                 data:
+ *                   example: Validation failed
+ *                 details:
  *                   type: array
  *                   items:
  *                     type: object
@@ -102,10 +91,8 @@ const logger = winston.createLogger({
  *                         type: string
  *                       param:
  *                         type: string
- *                       location:
- *                         type: string
  *       401:
- *         description: Credenciales inválidas
+ *         description: Invalid username or password
  *         content:
  *           application/json:
  *             schema:
@@ -115,7 +102,7 @@ const logger = winston.createLogger({
  *                   type: string
  *                   example: Invalid credentials
  *       403:
- *         description: Cuenta de usuario inactiva
+ *         description: User account is inactive
  *         content:
  *           application/json:
  *             schema:
@@ -125,7 +112,7 @@ const logger = winston.createLogger({
  *                   type: string
  *                   example: User account is inactive
  *       500:
- *         description: Error interno del servidor
+ *         description: Server error
  *         content:
  *           application/json:
  *             schema:
@@ -133,53 +120,48 @@ const logger = winston.createLogger({
  *               properties:
  *                 error:
  *                   type: string
- *                   example: Error al iniciar sesión
+ *                   example: Error during login
  */
 router.post(
   '/login',
   [
-    body('username').isString().trim().notEmpty().withMessage('username is required'),
-    body('password').isString().trim().notEmpty().withMessage('password is required'),
+    body('username').isString().trim().notEmpty().withMessage('Username is required'),
+    body('password').isString().trim().notEmpty().withMessage('Password is required')
   ],
   async (req, res, next) => {
     try {
-      logger.info('Intentando iniciar sesión', { username: req.body.username, ip: req.ip });
+      logger.info('Attempting user login', { username: req.body.username, ip: req.ip });
+
+      // Validate request body
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
-        const error = new Error('Validación fallida');
-        error.statusCode = 400;
-        error.data = errors.array();
-        throw error;
+        logger.warn('Validation failed', { errors: errors.array(), ip: req.ip });
+        return res.status(400).json({ error: 'Validation failed', details: errors.array() });
       }
+
       const { username, password } = req.body;
 
+      // Query database using stored procedure (without password comparison in SP)
       const pool = await poolPromise;
       const result = await pool
         .request()
-        .input('username', sql.NVarChar(50), username) // Match the parameter type in the stored procedure
-        .input('password', sql.NVarChar(50), password) // Assuming password is also a parameter
+        .input('username', sql.NVarChar(50), username)
+        .input('password', sql.NVarChar(100), password) // Still pass for compatibility
         .execute('sp_LoginUsuario');
 
-      if (result.recordset.length === 0) {
-        logger.warn('Credenciales inválidas', { username: username, ip: req.ip });
-        const error = new Error('Invalid credentials');
-        error.statusCode = 401;
-        throw error;
-      }
-
       const user = result.recordset[0];
-      if (user.estado !== 'Activo') {
-        logger.warn('Cuenta de usuario inactiva', { username: username, ip: req.ip });
-        const error = new Error('User account is inactive');
-        error.statusCode = 403;
-        throw error;
+
+      // Verify password using bcrypt
+      const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+      if (!isPasswordValid) {
+        logger.warn('Invalid password', { username, ip: req.ip });
+        return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-      const jwt = require('jsonwebtoken');
+      // Generate JWT
       if (!process.env.JWT_SECRET) {
-        logger.error('JWT_SECRET no está configurado', { ip: req.ip });
-        throw new Error('JWT_SECRET no está configurado');
+        logger.error('JWT_SECRET not configured', { ip: req.ip });
+        throw new Error('JWT_SECRET not configured');
       }
 
       const token = jwt.sign(
@@ -188,16 +170,33 @@ router.post(
         { expiresIn: '1h' }
       );
 
-      logger.info('Inicio de sesión exitoso', { username: username, ip: req.ip });
-      res.json({
+      logger.info('Login successful', { username, ip: req.ip });
+      res.status(200).json({
         message: 'Login successful',
         token,
-        user: { id_usuario: user.id_usuario, username: user.username, rol: user.rol },
+        user: {
+          id_usuario: user.id_usuario,
+          username: user.username,
+          email: user.email,
+          rol: user.rol
+        }
       });
     } catch (err) {
-      logger.error('Error al iniciar sesión', { error: err.message, ip: req.ip });
-      err.statusCode = err.statusCode || 500;
-      next(err);
+      logger.error('Error during login', { error: err.message, ip: req.ip });
+      
+      // Handle specific stored procedure errors
+      if (err.message && err.message.includes('Usuario no encontrado')) {
+        logger.warn('User not found', { username: req.body.username, ip: req.ip });
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      
+      if (err.message && err.message.includes('Usuario inactivo')) {
+        logger.warn('User account is inactive', { username: req.body.username, ip: req.ip });
+        return res.status(403).json({ error: 'User account is inactive' });
+      }
+      
+      // Generic server error
+      res.status(500).json({ error: 'Error during login' });
     }
   }
 );
