@@ -87,10 +87,6 @@ console.log('patients.js loaded at', new Date().toISOString());
  *           type: string
  *           description: Contacto principal (opcional)
  *           nullable: true
- *         id_salud_nacional:
- *           type: string
- *           description: ID de salud nacional (opcional)
- *           nullable: true
  *         estado:
  *           type: string
  *           enum: [Activo, Inactivo]
@@ -144,7 +140,6 @@ console.log('patients.js loaded at', new Date().toISOString());
  *         longitud: null
  *         id_centro_salud: null
  *         contacto_principal: null
- *         id_salud_nacional: null
  *         estado: "Activo"
  *         tutores: []
  *     PatientInput:
@@ -187,9 +182,6 @@ console.log('patients.js loaded at', new Date().toISOString());
  *           format: uuid
  *           nullable: true
  *         contacto_principal:
- *           type: string
- *           nullable: true
- *         id_salud_nacional:
  *           type: string
  *           nullable: true
  *         tutores:
@@ -270,7 +262,6 @@ router.get('/', async (req, res, next) => {
         n.longitud,
         n.id_centro_salud,
         n.contacto_principal,
-        n.id_salud_nacional,
         n.estado,
         (
           SELECT 
@@ -309,7 +300,6 @@ router.get('/', async (req, res, next) => {
       longitud: row.longitud,
       id_centro_salud: row.id_centro_salud,
       contacto_principal: row.contacto_principal,
-      id_salud_nacional: row.id_salud_nacional,
       estado: row.estado,
       tutores: row.tutores ? JSON.parse(row.tutores) : []
     }));
@@ -348,7 +338,6 @@ router.get('/', async (req, res, next) => {
  *             longitud: -69.970076
  *             id_centro_salud: "71e89e1a-1324-44b4-85f2-4b341af9d02e"
  *             contacto_principal: null
- *             id_salud_nacional: null
  *             tutores: []
  *             tutor_ids: []
  *     responses:
@@ -379,7 +368,6 @@ router.post('/', [
   body('longitud').optional().isDecimal().withMessage('Longitud inválida'),
   body('id_centro_salud').optional().isUUID().withMessage('ID de centro inválido'),
   body('contacto_principal').optional().isString().withMessage('Contacto principal debe ser una cadena válida'),
-  body('id_salud_nacional').optional().isString().withMessage('ID de salud nacional debe ser una cadena válida'),
   body('tutores').optional().isArray({ min: 0, max: 3 }).withMessage('Debe asignarse hasta 3 tutores nuevos'),
   body('tutores.*.nombre').optional().notEmpty().isString().withMessage('Nombre del tutor es requerido'),
   body('tutores.*.relacion')
@@ -473,7 +461,6 @@ router.post('/', [
       .input('longitud', sql.Decimal(9, 6), req.body.longitud || null)
       .input('id_centro_salud', sql.UniqueIdentifier, req.body.id_centro_salud || null)
       .input('contacto_principal', sql.NVarChar, req.body.contacto_principal || null)
-      .input('id_salud_nacional', sql.NVarChar, req.body.id_salud_nacional || null)
       .input('tutores', tvpTutores)
       .input('tutor_ids', tvpTutorIds);
 
@@ -564,7 +551,6 @@ router.get('/:id', [
           n.longitud,
           n.id_centro_salud,
           n.contacto_principal,
-          n.id_salud_nacional,
           n.estado,
           (
             SELECT 
@@ -606,7 +592,6 @@ router.get('/:id', [
       longitud: result.recordset[0].longitud,
       id_centro_salud: result.recordset[0].id_centro_salud,
       contacto_principal: result.recordset[0].contacto_principal,
-      id_salud_nacional: result.recordset[0].id_salud_nacional,
       estado: result.recordset[0].estado,
       tutores: result.recordset[0].tutores ? JSON.parse(result.recordset[0].tutores) : []
     };
@@ -664,7 +649,6 @@ router.put('/:id', [
   body('longitud').optional().isDecimal().withMessage('Longitud inválida'),
   body('id_centro_salud').optional().isUUID().withMessage('ID de centro inválido'),
   body('contacto_principal').optional().isString().withMessage('Contacto principal debe ser una cadena válida'),
-  body('id_salud_nacional').optional().isString().withMessage('ID de salud nacional debe ser una cadena válida'),
   body('tutores').optional().isArray({ min: 0, max: 3 }).withMessage('Debe asignarse hasta 3 tutores si se proporciona'),
   body('tutores.*.nombre').optional().notEmpty().isString().withMessage('Nombre del tutor es requerido'),
   body('tutores.*.relacion')
@@ -770,7 +754,6 @@ router.put('/:id', [
       .input('longitud', sql.Decimal(9, 6), req.body.longitud || null)
       .input('id_centro_salud', sql.UniqueIdentifier, req.body.id_centro_salud || null)
       .input('contacto_principal', sql.NVarChar, req.body.contacto_principal || null)
-      .input('id_salud_nacional', sql.NVarChar, req.body.id_salud_nacional || null)
       .input('tutores', tvpTutores)
       .input('tutor_ids', tvpTutorIds)
       .execute('sp_ActualizarNiño');
