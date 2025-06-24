@@ -142,7 +142,7 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  * @swagger
  * /api/users:
  *   get:
- *     summary: Listar todos los usuarios activos
+ *     summary: Listar todos los usuarios (activos e inactivos)
  *     tags: [Users]
  *     responses:
  *       200:
@@ -166,9 +166,9 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  */
 router.get('/', async (req, res, next) => {
   try {
-    logger.info('Obteniendo usuarios activos', { ip: req.ip });
+    logger.info('Obteniendo todos los usuarios', { ip: req.ip });
     const pool = await poolPromise;
-    const result = await pool.request().query('SELECT * FROM Usuarios WHERE estado = \'Activo\'');
+    const result = await pool.request().query('SELECT * FROM Usuarios');
     res.status(200).json(result.recordset);
   } catch (err) {
     logger.error('Error al obtener usuarios', { error: err.message, ip: req.ip });
@@ -578,6 +578,99 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
     res.status(204).send();
   } catch (err) {
     logger.error('Error al desactivar usuario', { id: req.params.id, error: err.message, ip: req.ip });
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
+});
+
+/**
+ * @swagger
+ * /api/users/{id}/activate:
+ *   put:
+ *     summary: Activar un usuario
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del usuario
+ *     responses:
+ *       204:
+ *         description: Usuario activado exitosamente
+ *       400:
+ *         description: ID inválido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Validación fallida
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       msg:
+ *                         type: string
+ *                       param:
+ *                         type: string
+ *                       location:
+ *                         type: string
+ *       404:
+ *         description: Usuario no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Usuario no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Error al activar usuario
+ */
+router.put('/:id/activate', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Activando usuario', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
+    const pool = await poolPromise;
+    const exists = await pool
+      .request()
+      .input('id_usuario', sql.UniqueIdentifier, req.params.id)
+      .query('SELECT 1 FROM Usuarios WHERE id_usuario = @id_usuario');
+    if (exists.recordset.length === 0) {
+      logger.warn('Usuario no encontrado', { id: req.params.id, ip: req.ip });
+      const error = new Error('Usuario no encontrado');
+      error.statusCode = 404;
+      throw error;
+    }
+    await pool
+      .request()
+      .input('id_usuario', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_ActivarUsuario');
+    res.status(204).send();
+  } catch (err) {
+    logger.error('Error al activar usuario', { id: req.params.id, error: err.message, ip: req.ip });
     err.statusCode = err.statusCode || 500;
     next(err);
   }

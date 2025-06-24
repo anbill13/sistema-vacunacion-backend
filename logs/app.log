@@ -789,3 +789,7 @@
 {"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-23T04:48:29.676Z"}
 {"error":"Cannot open server 'sistemavacunacionapp' requested by the login. Client with IP address '179.61.31.86' is not allowed to access the server.  To enable access, use the Azure Management Portal or run sp_set_firewall_rule on the master database to create a firewall rule for this IP address or address range.  It may take up to five minutes for this change to take effect.","level":"error","message":"❌ Fallo en la conexión a la base de datos","timestamp":"2025-06-23T13:06:31.730Z"}
 {"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-23T13:14:47.376Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-24T00:46:24.541Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-24T07:12:05.866Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-24T08:22:15.534Z"}
+{"level":"info","message":"✅ Conectado a Azure SQL Server","timestamp":"2025-06-24T08:43:57.844Z"}

@@ -18,6 +18,9 @@ const logger = winston.createLogger({
   ],
 });
 
+// Log to confirm file loading
+console.log('patients.js loaded at', new Date().toISOString());
+
 /**
  * @swagger
  * tags:
@@ -220,6 +223,7 @@ const logger = winston.createLogger({
  *                 default: TutorLegal
  *           minItems: 0
  *           maxItems: 3
+ *           description: Lista de nuevos tutores (opcional)
  *         tutor_ids:
  *           type: array
  *           items:
@@ -227,7 +231,7 @@ const logger = winston.createLogger({
  *             format: uuid
  *           minItems: 0
  *           maxItems: 3
- *           description: Lista de IDs de tutores existentes
+ *           description: Lista de IDs de tutores existentes (opcional)
  */
 
 /**
@@ -339,22 +343,14 @@ router.get('/', async (req, res, next) => {
  *             pais_nacimiento: "República Dominicana"
  *             fecha_nacimiento: "2013-09-25"
  *             genero: "M"
- *             direccion_residencia: C. H numero 11, Santo Domingo
+ *             direccion_residencia: "C. H numero 11, Santo Domingo"
  *             latitud: 18.482554
  *             longitud: -69.970076
- *             id_centro_salud: 71e89e1a-1324-44b4-85f2-4b341af9d02e
+ *             id_centro_salud: "71e89e1a-1324-44b4-85f2-4b341af9d02e"
  *             contacto_principal: null
- *             tutores:
- *               - nombre: "Juan Pérez"
- *                 relacion: "Padre"
- *                 nacionalidad: "Dominicano"
- *                 identificacion: "002-7654321-15"
- *                 telefono: "809-555-4321"
- *                 email: "juan.perez@example.com"
- *                 direccion: "Calle 2, La Romana"
- *                 tipo_relacion: "Padre1"
- *             tutor_ids:
- *               - "123e4567-e89b-12d3-a456-426614174020"
+ *             id_salud_nacional: null
+ *             tutores: []
+ *             tutor_ids: []
  *     responses:
  *       201:
  *         description: Paciente creado exitosamente
@@ -403,13 +399,9 @@ router.post('/', [
   body('tutores.*.tipo_relacion').optional().isIn(['Padre1', 'Padre2', 'TutorLegal']).withMessage('Tipo de relación inválido'),
   body('tutor_ids').optional().isArray({ min: 0, max: 3 }).withMessage('Debe asignarse hasta 3 IDs de tutores existentes'),
   body('tutor_ids.*').optional().isUUID().withMessage('ID de tutor inválido'),
-  body().custom((value) => {
-    const totalTutors = (value.tutores?.length || 0) + (value.tutor_ids?.length || 0);
-    if (totalTutors < 1 || totalTutors > 3) {
-      throw new Error('Debe asignarse entre 1 y 3 tutores (nuevos o existentes).');
-    }
-    if (value.tutores) {
-      const roles = value.tutores.map(t => t.tipo_relacion || 'TutorLegal');
+  body('tutores').custom((tutores, { req }) => {
+    if (tutores && tutores.length > 0) {
+      const roles = tutores.map(t => t.tipo_relacion || 'TutorLegal');
       const roleCount = {};
       roles.forEach(r => { roleCount[r] = (roleCount[r] || 0) + 1; });
       if (roleCount['Padre1'] > 1 || roleCount['Padre2'] > 1 || roleCount['TutorLegal'] > 1) {
@@ -418,34 +410,35 @@ router.post('/', [
     }
     return true;
   }),
-], async (req, res, next) => {
+], async (req, res) => {
   try {
     logger.info('Creando paciente con tutores', {
       nombre_completo: req.body.nombre_completo,
+      identificacion: req.body.identificacion,
       tutor_count: (req.body.tutores?.length || 0) + (req.body.tutor_ids?.length || 0),
       ip: req.ip
     });
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
-      const error = new Error('Validación fallida');
-      error.statusCode = 400;
-      error.data = errors.array();
-      throw error;
+      logger.warn('Validación fallida en el servidor', { errors: errors.array(), ip: req.ip });
+      return res.status(400).json({
+        error: 'Validación fallida',
+        data: errors.array()
+      });
     }
 
     const pool = await poolPromise;
-    const tvpTutores = req.body.tutores ? new sql.Table() : null;
-    if (tvpTutores) {
-      tvpTutores.columns.add('nombre', sql.NVarChar(200));
-      tvpTutores.columns.add('relacion', sql.NVarChar(50));
-      tvpTutores.columns.add('nacionalidad', sql.NVarChar(100));
-      tvpTutores.columns.add('identificacion', sql.NVarChar(20));
-      tvpTutores.columns.add('telefono', sql.NVarChar(20));
-      tvpTutores.columns.add('email', sql.NVarChar(100));
-      tvpTutores.columns.add('direccion', sql.NVarChar(500));
-      tvpTutores.columns.add('tipo_relacion', sql.NVarChar(20));
+    const tvpTutores = new sql.Table();
+    tvpTutores.columns.add('nombre', sql.NVarChar(200));
+    tvpTutores.columns.add('relacion', sql.NVarChar(50));
+    tvpTutores.columns.add('nacionalidad', sql.NVarChar(100));
+    tvpTutores.columns.add('identificacion', sql.NVarChar(20));
+    tvpTutores.columns.add('telefono', sql.NVarChar(20));
+    tvpTutores.columns.add('email', sql.NVarChar(100));
+    tvpTutores.columns.add('direccion', sql.NVarChar(500));
+    tvpTutores.columns.add('tipo_relacion', sql.NVarChar(20));
 
+    if (req.body.tutores && req.body.tutores.length > 0) {
       req.body.tutores.forEach(tutor => {
         tvpTutores.rows.add(
           tutor.nombre,
@@ -460,9 +453,9 @@ router.post('/', [
       });
     }
 
-    const tvpTutorIds = req.body.tutor_ids ? new sql.Table() : null;
-    if (tvpTutorIds) {
-      tvpTutorIds.columns.add('id_tutor', sql.UniqueIdentifier);
+    const tvpTutorIds = new sql.Table();
+    tvpTutorIds.columns.add('id_tutor', sql.UniqueIdentifier);
+    if (req.body.tutor_ids && req.body.tutor_ids.length > 0) {
       req.body.tutor_ids.forEach(id => {
         tvpTutorIds.rows.add(id);
       });
@@ -481,25 +474,34 @@ router.post('/', [
       .input('id_centro_salud', sql.UniqueIdentifier, req.body.id_centro_salud || null)
       .input('contacto_principal', sql.NVarChar, req.body.contacto_principal || null)
       .input('id_salud_nacional', sql.NVarChar, req.body.id_salud_nacional || null)
-      .input('tutores', tvpTutores || null)
-      .input('tutor_ids', tvpTutorIds || null);
+      .input('tutores', tvpTutores)
+      .input('tutor_ids', tvpTutorIds);
 
     const result = await request.execute('sp_CrearNiño');
     const id_niño = result.recordset[0]?.id_niño;
 
     if (!id_niño) {
       logger.warn('No se obtuvo id_niño del procedimiento almacenado', { ip: req.ip });
-      throw new Error('No se pudo crear el paciente');
+      return res.status(500).json({
+        error: 'Error interno del servidor',
+        data: { message: 'No se pudo crear el paciente' }
+      });
     }
 
     logger.info('Paciente creado exitosamente', { id_niño, ip: req.ip });
     res.status(201).json({ id_paciente: id_niño });
   } catch (err) {
-    logger.error('Error al crear paciente', { error: err.message, stack: err.stack, ip: req.ip });
-    const error = new Error(err.message || 'Error al crear paciente');
-    error.statusCode = err.number === 50000 ? 400 : 500;
-    error.data = err.message ? { message: err.message } : null;
-    next(error);
+    logger.error('Error al crear paciente', {
+      error: err.message,
+      stack: err.stack,
+      rawError: JSON.stringify(err, Object.getOwnPropertyNames(err)),
+      ip: req.ip
+    });
+    const statusCode = err.number === 50000 ? 400 : 500;
+    res.status(statusCode).json({
+      error: 'Error al crear paciente',
+      data: { message: err.message || 'Error interno del servidor' }
+    });
   }
 });
 
@@ -663,17 +665,7 @@ router.put('/:id', [
   body('id_centro_salud').optional().isUUID().withMessage('ID de centro inválido'),
   body('contacto_principal').optional().isString().withMessage('Contacto principal debe ser una cadena válida'),
   body('id_salud_nacional').optional().isString().withMessage('ID de salud nacional debe ser una cadena válida'),
-  body('tutores').optional().isArray({ min: 0, max: 3 }).withMessage('Debe asignarse hasta 3 tutores si se proporciona').custom((tutores) => {
-    if (tutores) {
-      const roles = tutores.map(t => t.tipo_relacion || 'TutorLegal');
-      const roleCount = {};
-      roles.forEach(r => { roleCount[r] = (roleCount[r] || 0) + 1; });
-      if (roleCount['Padre1'] > 1 || roleCount['Padre2'] > 1 || roleCount['TutorLegal'] > 1) {
-        throw new Error('Solo puede haber un Padre1, un Padre2 y un TutorLegal.');
-      }
-    }
-    return true;
-  }),
+  body('tutores').optional().isArray({ min: 0, max: 3 }).withMessage('Debe asignarse hasta 3 tutores si se proporciona'),
   body('tutores.*.nombre').optional().notEmpty().isString().withMessage('Nombre del tutor es requerido'),
   body('tutores.*.relacion')
     .optional()
@@ -685,17 +677,21 @@ router.put('/:id', [
     })
     .isIn(['Madre', 'Padre', 'Tutor Legal']).withMessage('Relación inválida'),
   body('tutores.*.nacionalidad').optional().notEmpty().isString().withMessage('Nacionalidad del tutor es requerida'),
-  body('tutores.*. rank:0.identificacion').optional().isString().withMessage('Identificación del tutor debe ser una cadena válida'),
+  body('tutores.*.identificacion').optional().isString().withMessage('Identificación del tutor debe ser una cadena válida'),
   body('tutores.*.telefono').optional().isString().withMessage('Teléfono del tutor debe ser una cadena válida'),
   body('tutores.*.email').optional().isEmail().withMessage('Email del tutor debe ser válido'),
   body('tutores.*.direccion').optional().isString().withMessage('Dirección del tutor debe ser una cadena válida'),
   body('tutores.*.tipo_relacion').optional().isIn(['Padre1', 'Padre2', 'TutorLegal']).withMessage('Tipo de relación inválido'),
   body('tutor_ids').optional().isArray({ min: 0, max: 3 }).withMessage('Debe asignarse hasta 3 IDs de tutores si se proporciona'),
   body('tutor_ids.*').optional().isUUID().withMessage('ID de tutor inválido'),
-  body().custom((value) => {
-    const totalTutors = (value.tutores?.length || 0) + (value.tutor_ids?.length || 0);
-    if (totalTutors < 1 || totalTutors > 3) {
-      throw new Error('Debe asignarse entre 1 y 3 tutores (nuevos o existentes).');
+  body('tutores').custom((tutores, { req }) => {
+    if (tutores && tutores.length > 0) {
+      const roles = tutores.map(t => t.tipo_relacion || 'TutorLegal');
+      const roleCount = {};
+      roles.forEach(r => { roleCount[r] = (roleCount[r] || 0) + 1; });
+      if (roleCount['Padre1'] > 1 || roleCount['Padre2'] > 1 || roleCount['TutorLegal'] > 1) {
+        throw new Error('Solo puede haber un Padre1, un Padre2 y un TutorLegal.');
+      }
     }
     return true;
   }),
@@ -727,17 +723,17 @@ router.put('/:id', [
       throw error;
     }
 
-    const tvpTutores = req.body.tutores ? new sql.Table() : null;
-    if (tvpTutores) {
-      tvpTutores.columns.add('nombre', sql.NVarChar(200));
-      tvpTutores.columns.add('relacion', sql.NVarChar(50));
-      tvpTutores.columns.add('nacionalidad', sql.NVarChar(100));
-      tvpTutores.columns.add('identificacion', sql.NVarChar(20));
-      tvpTutores.columns.add('telefono', sql.NVarChar(20));
-      tvpTutores.columns.add('email', sql.NVarChar(100));
-      tvpTutores.columns.add('direccion', sql.NVarChar(500));
-      tvpTutores.columns.add('tipo_relacion', sql.NVarChar(20));
+    const tvpTutores = new sql.Table();
+    tvpTutores.columns.add('nombre', sql.NVarChar(200));
+    tvpTutores.columns.add('relacion', sql.NVarChar(50));
+    tvpTutores.columns.add('nacionalidad', sql.NVarChar(100));
+    tvpTutores.columns.add('identificacion', sql.NVarChar(20));
+    tvpTutores.columns.add('telefono', sql.NVarChar(20));
+    tvpTutores.columns.add('email', sql.NVarChar(100));
+    tvpTutores.columns.add('direccion', sql.NVarChar(500));
+    tvpTutores.columns.add('tipo_relacion', sql.NVarChar(20));
 
+    if (req.body.tutores && req.body.tutores.length > 0) {
       req.body.tutores.forEach(tutor => {
         tvpTutores.rows.add(
           tutor.nombre,
@@ -752,9 +748,9 @@ router.put('/:id', [
       });
     }
 
-    const tvpTutorIds = req.body.tutor_ids ? new sql.Table() : null;
-    if (tvpTutorIds) {
-      tvpTutorIds.columns.add('id_tutor', sql.UniqueIdentifier);
+    const tvpTutorIds = new sql.Table();
+    tvpTutorIds.columns.add('id_tutor', sql.UniqueIdentifier);
+    if (req.body.tutor_ids && req.body.tutor_ids.length > 0) {
       req.body.tutor_ids.forEach(id => {
         tvpTutorIds.rows.add(id);
       });
@@ -775,8 +771,8 @@ router.put('/:id', [
       .input('id_centro_salud', sql.UniqueIdentifier, req.body.id_centro_salud || null)
       .input('contacto_principal', sql.NVarChar, req.body.contacto_principal || null)
       .input('id_salud_nacional', sql.NVarChar, req.body.id_salud_nacional || null)
-      .input('tutores', tvpTutores || null)
-      .input('tutor_ids', tvpTutorIds || null)
+      .input('tutores', tvpTutores)
+      .input('tutor_ids', tvpTutorIds)
       .execute('sp_ActualizarNiño');
 
     res.status(204).send();
