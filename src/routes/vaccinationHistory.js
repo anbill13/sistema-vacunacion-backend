@@ -21,7 +21,7 @@ const logger = winston.createLogger({
 const validateVaccination = [
   body('id_niño').isUUID().withMessage('ID de niño inválido'),
   body('id_lote').isUUID().withMessage('ID de lote inválido'),
-  body('id_personal').isUUID().withMessage('ID de personal inválido'),
+  body('id_usuario').isUUID().withMessage('ID de usuario inválido'),
   body('id_centro').optional({ nullable: true }).isUUID().withMessage('ID de centro inválido'),
   body('fecha_vacunacion').isISO8601().withMessage('Fecha de vacunación inválida'),
   body('dosis_aplicada').isInt({ min: 1 }).withMessage('Dosis aplicada debe ser un número positivo'),
@@ -47,7 +47,7 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *       required:
  *         - id_niño
  *         - id_lote
- *         - id_personal
+ *         - id_usuario
  *         - fecha_vacunacion
  *         - dosis_aplicada
  *       properties:
@@ -63,10 +63,10 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *           type: string
  *           format: uuid
  *           description: ID del lote de vacuna
- *         id_personal:
+ *         id_usuario:
  *           type: string
  *           format: uuid
- *           description: ID del personal de salud
+ *           description: ID del usuario que registra la vacunación
  *         id_centro:
  *           type: string
  *           format: uuid
@@ -90,14 +90,14 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *         nombre_centro:
  *           type: string
  *           description: Nombre del centro
- *         personal_responsable:
+ *         usuario_responsable:
  *           type: string
- *           description: Nombre del personal responsable
+ *           description: Nombre del usuario responsable
  *       example:
  *         id_historial: "123e4567-e89b-12d3-a456-426614174019"
  *         id_niño: "123e4567-e89b-12d3-a456-426614174006"
  *         id_lote: "123e4567-e89b-12d3-a456-426614174018"
- *         id_personal: "123e4567-e89b-12d3-a456-426614174005"
+ *         id_usuario: "123e4567-e89b-12d3-a456-426614174005"
  *         id_centro: "123e4567-e89b-12d3-a456-426614174007"
  *         fecha_vacunacion: "2025-06-20T14:00:00Z"
  *         dosis_aplicada: 1
@@ -105,13 +105,13 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *         observaciones: "Sin reacciones adversas"
  *         nombre_vacuna: "Vacuna contra el sarampión"
  *         nombre_centro: "Centro de Salud Central"
- *         personal_responsable: "Dr. Juan Pérez"
+ *         usuario_responsable: "Dr. Juan Pérez"
  *     VaccinationHistoryInput:
  *       type: object
  *       required:
  *         - id_niño
  *         - id_lote
- *         - id_personal
+ *         - id_usuario
  *         - fecha_vacunacion
  *         - dosis_aplicada
  *       properties:
@@ -121,7 +121,7 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *         id_lote:
  *           type: string
  *           format: uuid
- *         id_personal:
+ *         id_usuario:
  *           type: string
  *           format: uuid
  *         id_centro:
@@ -334,7 +334,7 @@ router.post('/', validateVaccination, async (req, res, next) => {
     logger.info('Executing sp_RegistrarVacunacion with parameters', {
       id_niño: req.body.id_niño,
       id_lote: req.body.id_lote,
-      id_personal: req.body.id_personal,
+      id_usuario: req.body.id_usuario,
       id_centro: req.body.id_centro,
       fecha_vacunacion: req.body.fecha_vacunacion,
       dosis_aplicada: req.body.dosis_aplicada,
@@ -346,7 +346,7 @@ router.post('/', validateVaccination, async (req, res, next) => {
       .request()
       .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
       .input('id_lote', sql.UniqueIdentifier, req.body.id_lote)
-      .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
+      .input('id_usuario', sql.UniqueIdentifier, req.body.id_usuario)
       .input('id_centro', sql.UniqueIdentifier, req.body.id_centro || null)
       .input('fecha_vacunacion', sql.DateTime2, req.body.fecha_vacunacion)
       .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
@@ -367,25 +367,17 @@ router.post('/', validateVaccination, async (req, res, next) => {
       ip: req.ip 
     });
     
-    let errorMessage = 'Error al crear historial de vacunación';
+    let errorMessage = 'Error al registrar la vacunación';
     let statusCode = 500;
-    // Note: In production, remove detailed error data from response to avoid exposing sensitive information
-    let errorData = {
-      message: err.message,
-      sqlErrorNumber: err.number,
-      sqlErrorState: err.state,
-      sqlErrorLine: err.lineNumber,
-      sqlErrorProc: err.procName
-    };
+    let errorData = { message: errorMessage };
     
-    // Handle specific errors from stored procedure
     if (err.message && err.message.includes('Lote no disponible o sin stock')) {
       errorMessage = 'El lote de vacuna no está disponible o no tiene stock suficiente';
       statusCode = 400;
-    } else if (err.number === 547) { // Foreign key constraint violation
-      errorMessage = 'Error de integridad: verifique que el niño, lote, personal y centro existan';
+    } else if (err.number === 547) {
+      errorMessage = 'Error de integridad: verifique que el niño, lote, usuario y centro existan';
       statusCode = 400;
-    } else if (err.number === 50001) { // Custom error from RAISERROR
+    } else if (err.number === 50001) {
       errorMessage = err.message;
       statusCode = 400;
     }
@@ -454,12 +446,12 @@ router.put('/:id', [validateUUID, validateVaccination], async (req, res, next) =
       .input('id_historial', sql.UniqueIdentifier, req.params.id)
       .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
       .input('id_lote', sql.UniqueIdentifier, req.body.id_lote)
-      .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
-      .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+      .input('id_usuario', sql.UniqueIdentifier, req.body.id_usuario)
+      .input('id_centro', sql.UniqueIdentifier, req.body.id_centro || null)
       .input('fecha_vacunacion', sql.DateTime2, req.body.fecha_vacunacion)
       .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
-      .input('sitio_aplicacion', sql.NVarChar, req.body.sitio_aplicacion)
-      .input('observaciones', sql.NVarChar, req.body.observaciones)
+      .input('sitio_aplicacion', sql.NVarChar, req.body.sitio_aplicacion || null)
+      .input('observaciones', sql.NVarChar, req.body.observaciones || null)
       .execute('sp_ActualizarHistorialVacunacion');
     res.status(204).send();
   } catch (err) {
