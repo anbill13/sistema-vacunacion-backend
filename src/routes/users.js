@@ -681,7 +681,7 @@ router.put('/:id/activate', validateUUID, async (req, res, next) => {
  * /api/users/{userId}/patients:
  *   get:
  *     summary: Obtener los pacientes asociados a un usuario
- *     tags: [Tutors]
+ *     tags: [Users]
  *     parameters:
  *       - in: path
  *         name: userId
