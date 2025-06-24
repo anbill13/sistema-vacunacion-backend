@@ -676,4 +676,93 @@ router.put('/:id/activate', validateUUID, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/users/{userId}/patients:
+ *   get:
+ *     summary: Obtener los pacientes asociados a un usuario
+ *     tags: [Tutors]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del usuario asociado al tutor
+ *     responses:
+ *       200:
+ *         description: Lista de pacientes obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Niño'
+ *       400:
+ *         description: ID de usuario inválido
+ *       404:
+ *         description: Usuario no encontrado o no asociado a un tutor
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get(
+  '/users/:userId/patients',
+  [param('userId').isUUID().withMessage('ID de usuario inválido')],
+  async (req, res, next) => {
+    try {
+      logger.info('Obteniendo pacientes por usuario', {
+        id_usuario: req.params.userId,
+        ip: req.ip,
+      });
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        logger.warn('Validación fallida', {
+          id_usuario: req.params.userId,
+          errors: errors.array(),
+          ip: req.ip,
+        });
+        return res.status(400).json({
+          message: 'Validación fallida',
+          errors: errors.array(),
+        });
+      }
+
+      const pool = await poolPromise;
+      const result = await pool
+        .request()
+        .input('id_usuario', sql.UniqueIdentifier, req.params.userId)
+        .execute('sp_ObtenerPacientesPorUsuario');
+
+      const pacientes = result.recordset;
+
+      if (pacientes.length === 0) {
+        logger.info('No se encontraron pacientes para el usuario', {
+          id_usuario: req.params.userId,
+          ip: req.ip,
+        });
+        return res.status(200).json([]);
+      }
+
+      res.status(200).json(pacientes);
+    } catch (err) {
+      logger.error('Error al obtener pacientes por usuario', {
+        id_usuario: req.params.userId,
+        error: err.message,
+        ip: req.ip,
+      });
+
+      const isUserError =
+        err.message.includes('no existe') ||
+        err.message.includes('no asociado');
+
+      res.status(isUserError ? 404 : 500).json({
+        message: err.message || 'Error al obtener pacientes',
+      });
+    }
+  }
+);
+
+
 module.exports = router;
