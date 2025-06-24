@@ -29,15 +29,7 @@ const validateVaccination = [
     .optional({ nullable: true })
     .isString()
     .isLength({ max: 100 })
-    .withMessage('Sitio de aplicación debe ser una cadena válida (máximo 100 caracteres)')
-    .custom((value) => {
-      if (!value) return true;
-      const validSites = ['Brazo izquierdo', 'Brazo derecho', 'Muslo izquierdo', 'Muslo derecho'];
-      if (!validSites.includes(value)) {
-        throw new Error('Sitio de aplicación debe ser uno de: ' + validSites.join(', '));
-      }
-      return true;
-    }),
+    .withMessage('Sitio de aplicación debe ser una cadena válida (máximo 100 caracteres)'),
   body('observaciones')
     .optional({ nullable: true })
     .isString()
@@ -104,11 +96,11 @@ const validateIncidente = [
  *           description: Número de dosis aplicada
  *         sitio_aplicacion:
  *           type: string
- *           description: Sitio de aplicación (opcional, e.g., Brazo izquierdo, Brazo derecho)
+ *           description: Sitio de aplicación (opcional, cualquier texto hasta 100 caracteres)
  *           nullable: true
  *         observaciones:
  *           type: string
- *           description: Observaciones (opcional, sin límite de longitud)
+ *           description: Observaciones (opcional, cualquier texto)
  *           nullable: true
  *         nombre_vacuna:
  *           type: string
@@ -127,8 +119,8 @@ const validateIncidente = [
  *         id_centro: "123e4567-e89b-12d3-a456-426614174007"
  *         fecha_vacunacion: "2025-06-20T14:00:00Z"
  *         dosis_aplicada: 1
- *         sitio_aplicacion: "Brazo izquierdo"
- *         observaciones: "Paciente se movió durante la aplicación, pero la vacunación fue exitosa sin incidentes."
+ *         sitio_aplicacion: "Espalda"
+ *         observaciones: "Paciente se movió durante la aplicación, pero la vacunación fue exitosa."
  *         nombre_vacuna: "Vacuna contra el sarampión"
  *         nombre_centro: "Centro de Salud Central"
  *         usuario_responsable: "Dr. Juan Pérez"
@@ -172,7 +164,7 @@ const validateIncidente = [
  *         id_centro: "123e4567-e89b-12d3-a456-426614174007"
  *         fecha_vacunacion: "2025-06-20T14:00:00Z"
  *         dosis_aplicada: 1
- *         sitio_aplicacion: "Brazo izquierdo"
+ *         sitio_aplicacion: "Espalda"
  *         observaciones: "Vacunación exitosa"
  *     Incidente:
  *       type: object
@@ -220,20 +212,12 @@ const validateIncidente = [
  *                 $ref: '#/components/schemas/VaccinationHistory'
  *       500:
  *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Error inesperado al registrar la vacunación
  */
 router.get('/', async (req, res, next) => {
   try {
     logger.info('Obteniendo historiales de vacunación', { ip: req.ip });
     const pool = await poolPromise;
-    const result = await pool.request().query('SELECT * FROM Historial_Vacunacion');
+    const result = await pool.request().query('SELECT * FROM Historial_Vacunacion_Alterna');
     res.status(200).json(result.recordset);
   } catch (err) {
     logger.error('Error al obtener historiales de vacunación', { error: err.message, ip: req.ip });
@@ -266,34 +250,10 @@ router.get('/', async (req, res, next) => {
  *               $ref: '#/components/schemas/VaccinationHistory'
  *       400:
  *         description: ID inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Validación fallida
  *       404:
  *         description: Historial no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Historial no encontrado
  *       500:
  *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Error inesperado al registrar la vacunación
  */
 router.get('/by-id/:id', validateUUID, async (req, res, next) => {
   try {
@@ -310,7 +270,7 @@ router.get('/by-id/:id', validateUUID, async (req, res, next) => {
     const result = await pool
       .request()
       .input('id_historial', sql.UniqueIdentifier, req.params.id)
-      .query('SELECT * FROM Historial_Vacunacion WHERE id_historial = @id_historial');
+      .query('SELECT * FROM Historial_Vacunacion_Alterna WHERE id_historial = @id_historial');
     if (result.recordset.length === 0) {
       logger.warn('Historial no encontrado', { id: req.params.id, ip: req.ip });
       const error = new Error('Historial no encontrado');
@@ -350,34 +310,10 @@ router.get('/by-id/:id', validateUUID, async (req, res, next) => {
  *                 $ref: '#/components/schemas/VaccinationHistory'
  *       400:
  *         description: ID inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Validación fallida
  *       404:
  *         description: Historial no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Historial no encontrado
  *       500:
  *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Error inesperado al registrar la vacunación
  */
 router.get('/by-child/:id', validateUUID, async (req, res, next) => {
   try {
@@ -394,7 +330,7 @@ router.get('/by-child/:id', validateUUID, async (req, res, next) => {
     const result = await pool
       .request()
       .input('id_niño', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_ObtenerHistorialVacunacion'); // Assuming this SP exists and works
+      .query('SELECT * FROM Historial_Vacunacion_Alterna WHERE id_niño = @id_niño');
     if (result.recordset.length === 0) {
       logger.warn('Historial no encontrado para el niño', { id_niño: req.params.id, ip: req.ip });
       const error = new Error('Historial no encontrado');
@@ -432,47 +368,14 @@ router.get('/by-child/:id', validateUUID, async (req, res, next) => {
  *                 id_historial:
  *                   type: string
  *                   format: uuid
- *                   example: "123e4567-e89b-12d3-a456-426614174019"
  *       400:
  *         description: Error en los datos enviados
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Validación de entrada fallida
  *       404:
  *         description: Recurso no encontrado (ej. niño, lote, usuario, centro)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: El ID del niño no existe en la base de datos
  *       409:
  *         description: Conflicto (ej. stock de vacuna insuficiente)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: El lote de vacuna no tiene stock suficiente
  *       500:
  *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Error inesperado al registrar la vacunación
  */
 router.post('/', validateVaccination, async (req, res, next) => {
   try {
@@ -486,7 +389,7 @@ router.post('/', validateVaccination, async (req, res, next) => {
       throw error;
     }
 
-    // Flag concerning observations
+    // Check for concerning observations
     const concerningKeywords = ['ojo', 'accidente', 'error', 'herida', 'incidente'];
     if (req.body.observaciones && concerningKeywords.some(keyword => req.body.observaciones.toLowerCase().includes(keyword))) {
       logger.warn('Observaciones contienen contenido preocupante', { observaciones: req.body.observaciones, ip: req.ip });
@@ -496,15 +399,10 @@ router.post('/', validateVaccination, async (req, res, next) => {
     }
 
     const pool = await poolPromise;
-    logger.info('Executing sp_RegistrarVacunacion with parameters', {
+    logger.info('Executing sp_RegistrarVacunacion_Alterna with parameters', {
       id_niño: req.body.id_niño,
       id_lote: req.body.id_lote,
       id_usuario: req.body.id_usuario,
-      id_centro: req.body.id_centro,
-      fecha_vacunacion: req.body.fecha_vacunacion,
-      dosis_aplicada: req.body.dosis_aplicada,
-      sitio_aplicacion: req.body.sitio_aplicacion,
-      observaciones: req.body.observaciones,
       ip: req.ip
     });
     const result = await pool
@@ -517,53 +415,43 @@ router.post('/', validateVaccination, async (req, res, next) => {
       .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
       .input('sitio_aplicacion', sql.NVarChar(100), req.body.sitio_aplicacion || null)
       .input('observaciones', sql.NVarChar(sql.MAX), req.body.observaciones || null)
-      .execute('sp_RegistrarVacunacion');
+      .execute('sp_RegistrarVacunacion_Alterna');
     res.status(201).json({ id_historial: result.recordset[0].id_historial });
   } catch (err) {
     logger.error('Error al crear historial de vacunación', {
       error: err.message,
       originalError: err.originalError ? err.originalError.message : null,
       number: err.originalError ? err.originalError.number : null,
-      state: err.originalError ? err.originalError.state : null,
-      class: err.originalError ? err.originalError.class : null,
-      serverName: err.originalError ? err.originalError.serverName : null,
-      procName: err.originalError ? err.originalError.procName : null,
-      lineNumber: err.originalError ? err.originalError.lineNumber : null,
       ip: req.ip
     });
 
     let errorMessage = 'Error interno del servidor al registrar la vacunación.';
     let statusCode = 500;
 
-    // Prioritize errors from the stored procedure
     if (err.originalError) {
       const sqlError = err.originalError;
       errorMessage = sqlError.message;
 
       if (errorMessage.includes('La dosis aplicada debe ser un número positivo')) {
         statusCode = 400;
-      } else if (errorMessage.includes('El ID del niño no existe en la base de datos') ||
-                 errorMessage.includes('El ID del usuario no existe en la base de datos') ||
-                 errorMessage.includes('El ID del centro no existe en la base de datos') ||
-                 errorMessage.includes('El ID del lote no existe en la base de datos o el lote es inválido')) {
+      } else if (
+        errorMessage.includes('El ID del niño no existe en la base de datos') ||
+        errorMessage.includes('El ID del usuario no existe en la base de datos') ||
+        errorMessage.includes('El ID del centro no existe en la base de datos') ||
+        errorMessage.includes('El ID del lote no existe en la base de datos')
+      ) {
         statusCode = 404;
       } else if (errorMessage.includes('El lote de vacuna no tiene stock suficiente')) {
         statusCode = 409;
-      } else if (sqlError.number && sqlError.number === 547) {
-        errorMessage = 'Error de integridad de datos. Asegúrese de que todos los IDs (niño, lote, usuario, centro) existan.';
-        statusCode = 400;
-      } else if (sqlError.number && sqlError.severity >= 16) {
+      } else if (sqlError.number === 547) {
+        errorMessage = 'Error de integridad de datos. Asegúrese de que todos los IDs existan.';
         statusCode = 400;
       } else {
-        errorMessage = 'Error en la base de datos al registrar la vacunación.';
         statusCode = 500;
       }
     } else if (err.statusCode) {
       errorMessage = err.message;
       statusCode = err.statusCode;
-    } else {
-      errorMessage = 'Error interno del servidor. Por favor, intente de nuevo más tarde.';
-      statusCode = 500;
     }
 
     const error = new Error(errorMessage);
@@ -597,34 +485,10 @@ router.post('/', validateVaccination, async (req, res, next) => {
  *         description: Historial actualizado exitosamente
  *       400:
  *         description: Error en los datos enviados
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Validación fallida
  *       404:
  *         description: Historial no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Historial no encontrado
  *       500:
  *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Error inesperado al registrar la vacunación
  */
 router.put('/:id', [validateUUID, validateVaccination], async (req, res, next) => {
   try {
@@ -650,7 +514,7 @@ router.put('/:id', [validateUUID, validateVaccination], async (req, res, next) =
     const exists = await pool
       .request()
       .input('id_historial', sql.UniqueIdentifier, req.params.id)
-      .query('SELECT 1 FROM Historial_Vacunacion WHERE id_historial = @id_historial');
+      .query('SELECT 1 FROM Historial_Vacunacion_Alterna WHERE id_historial = @id_historial');
     if (exists.recordset.length === 0) {
       logger.warn('Historial no encontrado', { id: req.params.id, ip: req.ip });
       const error = new Error('Historial no encontrado');
@@ -666,9 +530,9 @@ router.put('/:id', [validateUUID, validateVaccination], async (req, res, next) =
       .input('id_centro', sql.UniqueIdentifier, req.body.id_centro || null)
       .input('fecha_vacunacion', sql.DateTime2, req.body.fecha_vacunacion)
       .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
-      .input('sitio_aplicacion', sql.NVarChar, req.body.sitio_aplicacion || null)
+      .input('sitio_aplicacion', sql.NVarChar(100), req.body.sitio_aplicacion || null)
       .input('observaciones', sql.NVarChar(sql.MAX), req.body.observaciones || null)
-      .execute('sp_ActualizarHistorialVacunacion'); // Assuming this SP exists and works
+      .execute('sp_ActualizarHistorialVacunacion_Alterna');
     res.status(204).send();
   } catch (err) {
     logger.error('Error al actualizar historial de vacunación', { id: req.params.id, error: err.message, ip: req.ip });
@@ -696,34 +560,10 @@ router.put('/:id', [validateUUID, validateVaccination], async (req, res, next) =
  *         description: Historial eliminado exitosamente
  *       400:
  *         description: ID inválido
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Validación fallida
  *       404:
  *         description: Historial no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Historial no encontrado
  *       500:
  *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Error inesperado al registrar la vacunación
  */
 router.delete('/:id', validateUUID, async (req, res, next) => {
   try {
@@ -740,7 +580,7 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
     const exists = await pool
       .request()
       .input('id_historial', sql.UniqueIdentifier, req.params.id)
-      .query('SELECT 1 FROM Historial_Vacunacion WHERE id_historial = @id_historial');
+      .query('SELECT 1 FROM Historial_Vacunacion_Alterna WHERE id_historial = @id_historial');
     if (exists.recordset.length === 0) {
       logger.warn('Historial no encontrado', { id: req.params.id, ip: req.ip });
       const error = new Error('Historial no encontrado');
@@ -750,7 +590,7 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
     await pool
       .request()
       .input('id_historial', sql.UniqueIdentifier, req.params.id)
-      .execute('sp_EliminarHistorialVacunacion'); // Assuming this SP exists and works
+      .execute('sp_EliminarHistorialVacunacion_Alterna');
     res.status(204).send();
   } catch (err) {
     logger.error('Error al eliminar historial de vacunación', { id: req.params.id, error: err.message, ip: req.ip });
@@ -782,37 +622,12 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
  *                 id_incidente:
  *                   type: string
  *                   format: uuid
- *                   example: "987e4567-e89b-12d3-a456-426614174020"
  *       400:
  *         description: Error en los datos enviados
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Validación fallida
  *       404:
  *         description: Historial de vacunación no encontrado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: El ID del historial no existe en la base de datos
  *       500:
  *         description: Error interno del servidor
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Error inesperado al registrar la vacunación
  */
 router.post('/incidentes', validateIncidente, async (req, res, next) => {
   try {
@@ -832,14 +647,12 @@ router.post('/incidentes', validateIncidente, async (req, res, next) => {
       .input('id_historial', sql.UniqueIdentifier, req.body.id_historial || null)
       .input('descripcion', sql.NVarChar(sql.MAX), req.body.descripcion)
       .input('fecha_reporte', sql.DateTime2, req.body.fecha_reporte)
-      .execute('sp_RegistrarIncidente'); // Assuming this SP exists and works
+      .execute('sp_RegistrarIncidente');
     res.status(201).json({ id_incidente: result.recordset[0].id_incidente });
   } catch (err) {
     logger.error('Error al crear incidente', {
       error: err.message,
       originalError: err.originalError ? err.originalError.message : null,
-      number: err.originalError ? err.originalError.number : null,
-      state: err.originalError ? err.originalError.state : null,
       ip: req.ip
     });
 
@@ -854,16 +667,10 @@ router.post('/incidentes', validateIncidente, async (req, res, next) => {
         statusCode = 404;
       } else if (sqlError.number && sqlError.severity >= 16) {
         statusCode = 400;
-      } else {
-        errorMessage = 'Error en la base de datos al registrar el incidente.';
-        statusCode = 500;
       }
     } else if (err.statusCode) {
       errorMessage = err.message;
       statusCode = err.statusCode;
-    } else {
-      errorMessage = 'Error interno del servidor. Por favor, intente de nuevo más tarde.';
-      statusCode = 500;
     }
 
     const error = new Error(errorMessage);
