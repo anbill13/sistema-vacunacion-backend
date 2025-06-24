@@ -66,26 +66,33 @@ const logger = winston.createLogger({
  *         direccion_residencia:
  *           type: string
  *           description: Dirección de residencia (opcional)
+ *           nullable: true
  *         latitud:
  *           type: number
  *           description: Latitud de la residencia (opcional)
+ *           nullable: true
  *         longitud:
  *           type: number
  *           description: Longitud de la residencia (opcional)
+ *           nullable: true
  *         id_centro_salud:
  *           type: string
  *           format: uuid
  *           description: ID del centro de salud (opcional)
+ *           nullable: true
  *         contacto_principal:
  *           type: string
  *           description: Contacto principal (opcional)
+ *           nullable: true
  *         id_salud_nacional:
  *           type: string
  *           description: ID de salud nacional (opcional)
+ *           nullable: true
  *         estado:
  *           type: string
  *           enum: [Activo, Inactivo]
  *           description: Estado del paciente
+ *           nullable: true
  *         tutores:
  *           type: array
  *           items:
@@ -122,31 +129,21 @@ const logger = winston.createLogger({
  *                 type: string
  *                 enum: [Activo, Inactivo]
  *       example:
- *         id_paciente: "EF835A71-2B1D-4280-87B3-289606482EC8"
+ *         id_paciente: "0F7D5047-5B0F-40C6-B8B8-4AA7ECD5EAE0"
  *         nombre_completo: "Pedro Díaz"
  *         identificacion: "PD123456"
  *         nacionalidad: "Dominicano"
  *         pais_nacimiento: "República Dominicana"
  *         fecha_nacimiento: "2013-09-25"
  *         genero: "M"
- *         direccion_residencia: "Calle 1, La Romana"
- *         latitud: 18.4275
- *         longitud: -68.9716
- *         id_centro_salud: "123e4567-e89b-12d3-a456-426614174007"
- *         contacto_principal: "Madre"
- *         id_salud_nacional: "SN123456"
+ *         direccion_residencia: null
+ *         latitud: null
+ *         longitud: null
+ *         id_centro_salud: null
+ *         contacto_principal: null
+ *         id_salud_nacional: null
  *         estado: "Activo"
- *         tutores:
- *           - id_tutor: "123e4567-e89b-12d3-a456-426614174008"
- *             nombre: "Juan Pérez"
- *             relacion: "Padre"
- *             nacionalidad: "Dominicano"
- *             identificacion: "002-7654321-15"
- *             telefono: "809-555-4321"
- *             email: "juan.perez@example.com"
- *             direccion: "Calle 2, La Romana"
- *             tipo_relacion: "Padre1"
- *             estado: "Activo"
+ *         tutores: []
  *     PatientInput:
  *       type: object
  *       required:
@@ -342,6 +339,11 @@ router.get('/', async (req, res, next) => {
  *             pais_nacimiento: "República Dominicana"
  *             fecha_nacimiento: "2013-09-25"
  *             genero: "M"
+ *             direccion_residencia: C. H numero 11, Santo Domingo
+ *             latitud: 18.482554
+ *             longitud: -69.970076
+ *             id_centro_salud: 71e89e1a-1324-44b4-85f2-4b341af9d02e
+ *             contacto_principal: null
  *             tutores:
  *               - nombre: "Juan Pérez"
  *                 relacion: "Padre"
@@ -683,7 +685,7 @@ router.put('/:id', [
     })
     .isIn(['Madre', 'Padre', 'Tutor Legal']).withMessage('Relación inválida'),
   body('tutores.*.nacionalidad').optional().notEmpty().isString().withMessage('Nacionalidad del tutor es requerida'),
-  body('tutores.*.identificacion').optional().isString().withMessage('Identificación del tutor debe ser una cadena válida'),
+  body('tutores.*. rank:0.identificacion').optional().isString().withMessage('Identificación del tutor debe ser una cadena válida'),
   body('tutores.*.telefono').optional().isString().withMessage('Teléfono del tutor debe ser una cadena válida'),
   body('tutores.*.email').optional().isEmail().withMessage('Email del tutor debe ser válido'),
   body('tutores.*.direccion').optional().isString().withMessage('Dirección del tutor debe ser una cadena válida'),
@@ -701,7 +703,7 @@ router.put('/:id', [
   try {
     logger.info('Actualizando paciente', {
       id: req.params.id,
-      tutor_count: (req.body.tutores?.length || 0) + (value.tutor_ids?.length || 0),
+      tutor_count: (req.body.tutores?.length || 0) + (req.body.tutor_ids?.length || 0),
       ip: req.ip
     });
     const errors = validationResult(req);
