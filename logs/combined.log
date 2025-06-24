@@ -2184,3 +2184,47 @@
 {"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-24T18:58:53.548Z"}
 {"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-24T18:58:53.633Z"}
 {"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-24T18:58:58.785Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-24T19:04:55.373Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-24T19:05:01.376Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-24T19:05:01.388Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-24T19:05:01.389Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-24T19:05:01.390Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-24T19:05:01.470Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-24T19:05:07.106Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-24T19:09:06.277Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-24T19:09:06.338Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-24T19:09:06.344Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-24T19:09:06.350Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-24T19:09:06.352Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-24T19:09:09.203Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-24T19:09:12.129Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-24T19:09:28.362Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-24T19:09:35.645Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-24T19:09:35.676Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-24T19:09:35.688Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-24T19:09:35.693Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-24T19:09:35.694Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-24T19:09:37.103Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-24T19:09:39.301Z"}
+{"ip":"::1","level":"info","message":"GET /api/users","params":{},"query":{},"timestamp":"2025-06-24T19:12:44.270Z"}
+{"ip":"::1","level":"info","message":"Obteniendo todos los usuarios","timestamp":"2025-06-24T19:12:44.271Z"}
+{"level":"info","message":"Server running on port 3000","timestamp":"2025-06-24T19:15:07.651Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/","params":{},"query":{},"timestamp":"2025-06-24T19:15:16.099Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui.css","params":{},"query":{},"timestamp":"2025-06-24T19:15:16.311Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-init.js","params":{},"query":{},"timestamp":"2025-06-24T19:15:16.323Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-bundle.js","params":{},"query":{},"timestamp":"2025-06-24T19:15:16.327Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/swagger-ui-standalone-preset.js","params":{},"query":{},"timestamp":"2025-06-24T19:15:16.328Z"}
+{"ip":"::1","level":"info","message":"GET /api-docs/favicon-32x32.png","params":{},"query":{},"timestamp":"2025-06-24T19:15:20.975Z"}
+{"ip":"::1","level":"info","message":"GET /service-worker.js","params":{},"query":{},"timestamp":"2025-06-24T19:15:22.746Z"}
+{"ip":"::1","level":"info","message":"GET /api/users","params":{},"query":{},"timestamp":"2025-06-24T19:15:29.190Z"}
+{"ip":"::1","level":"info","message":"Obteniendo todos los usuarios","timestamp":"2025-06-24T19:15:29.191Z"}
+{"ip":"::1","level":"info","message":"GET /api/users/4DE30F19-C044-49E9-A5E9-111689CCE3E6","params":{},"query":{},"timestamp":"2025-06-24T19:15:42.554Z"}
+{"id":"4DE30F19-C044-49E9-A5E9-111689CCE3E6","ip":"::1","level":"info","message":"Obteniendo usuario por ID","timestamp":"2025-06-24T19:15:42.557Z"}
+{"error":"Procedure sp_ObtenerUsuario has no parameters and arguments were supplied.","id":"4DE30F19-C044-49E9-A5E9-111689CCE3E6","ip":"::1","level":"error","message":"Error al obtener usuario","timestamp":"2025-06-24T19:15:42.725Z"}
+{"ip":"::1","level":"error","message":"Procedure sp_ObtenerUsuario has no parameters and arguments were supplied.","stack":"RequestError: Procedure sp_ObtenerUsuario has no parameters and arguments were supplied.\n    at handleError (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\mssql\\lib\\tedious\\request.js:738:15)\n    at Connection.emit (node:events:518:28)\n    at Connection.emit (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\connection.js:970:18)\n    at RequestTokenHandler.onErrorMessage (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\token\\handler.js:284:21)\n    at Readable.<anonymous> (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\token\\token-stream-parser.js:19:33)\n    at Readable.emit (node:events:518:28)\n    at addChunk (node:internal/streams/readable:561:12)\n    at readableAddChunkPushObjectMode (node:internal/streams/readable:538:3)\n    at Readable.push (node:internal/streams/readable:393:5)\n    at nextAsync (node:internal/streams/from:194:22)","timestamp":"2025-06-24T19:15:42.727Z"}
+{"ip":"::1","level":"info","message":"GET /api/users/4DE30F19-C044-49E9-A5E9-111689CCE3E6/patients","params":{},"query":{},"timestamp":"2025-06-24T19:16:00.779Z"}
+{"ip":"::1","level":"info","message":"GET /api/users/4DE30F19-C044-49E9-A5E9-111689CCE3E6","params":{},"query":{},"timestamp":"2025-06-24T19:17:40.328Z"}
+{"id":"4DE30F19-C044-49E9-A5E9-111689CCE3E6","ip":"::1","level":"info","message":"Obteniendo usuario por ID","timestamp":"2025-06-24T19:17:40.329Z"}
+{"error":"Procedure sp_ObtenerUsuario has no parameters and arguments were supplied.","id":"4DE30F19-C044-49E9-A5E9-111689CCE3E6","ip":"::1","level":"error","message":"Error al obtener usuario","timestamp":"2025-06-24T19:17:41.175Z"}
+{"ip":"::1","level":"error","message":"Procedure sp_ObtenerUsuario has no parameters and arguments were supplied.","stack":"RequestError: Procedure sp_ObtenerUsuario has no parameters and arguments were supplied.\n    at handleError (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\mssql\\lib\\tedious\\request.js:738:15)\n    at Connection.emit (node:events:518:28)\n    at Connection.emit (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\connection.js:970:18)\n    at RequestTokenHandler.onErrorMessage (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\token\\handler.js:284:21)\n    at Readable.<anonymous> (C:\\Users\\tiffa\\sistema-vacunacion-backend\\src\\node_modules\\tedious\\lib\\token\\token-stream-parser.js:19:33)\n    at Readable.emit (node:events:518:28)\n    at addChunk (node:internal/streams/readable:561:12)\n    at readableAddChunkPushObjectMode (node:internal/streams/readable:538:3)\n    at Readable.push (node:internal/streams/readable:393:5)\n    at nextAsync (node:internal/streams/from:194:22)","timestamp":"2025-06-24T19:17:41.175Z"}
+{"ip":"::1","level":"info","message":"GET /api/users/4DE30F19-C044-49E9-A5E9-111689CCE3E6/patients","params":{},"query":{},"timestamp":"2025-06-24T19:17:46.545Z"}

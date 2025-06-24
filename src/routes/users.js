@@ -689,7 +689,7 @@ router.put('/:id/activate', validateUUID, async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
- *         description: ID del usuario asociado al tutor
+ *         description: ID del usuario
  *     responses:
  *       200:
  *         description: Lista de pacientes obtenida exitosamente
@@ -707,7 +707,7 @@ router.put('/:id/activate', validateUUID, async (req, res, next) => {
  *         description: Error interno del servidor
  */
 router.get(
-  '/users/:userId/patients',
+  '/:userId/patients',
   [param('userId').isUUID().withMessage('ID de usuario inválido')],
   async (req, res, next) => {
     try {
