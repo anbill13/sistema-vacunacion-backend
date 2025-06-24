@@ -664,63 +664,38 @@ router.get('/:id/children', validateUUID, async (req, res, next) => {
  *       500:
  *         description: Error interno del servidor
  */
+router.get('/users/:userId/patients', [param('userId').isUUID().withMessage('ID de usuario inválido')], async (req, res, next) => {
+  try {
+    logger.info('Obteniendo pacientes por usuario', { id_usuario: req.params.userId, ip: req.ip });
 
-router.get(
-  '/users/:userId/patients',
-  [param('userId').isUUID().withMessage('ID de usuario inválido')],
-  async (req, res, next) => {
-    try {
-      logger.info('Obteniendo pacientes por usuario', {
-        id_usuario: req.params.userId,
-        ip: req.ip,
-      });
-
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        logger.warn('Validación fallida', {
-          id_usuario: req.params.userId,
-          errors: errors.array(),
-          ip: req.ip,
-        });
-        return res.status(400).json({
-          message: 'Validación fallida',
-          errors: errors.array(),
-        });
-      }
-
-      const pool = await poolPromise;
-      const result = await pool
-        .request()
-        .input('id_usuario', sql.UniqueIdentifier, req.params.userId)
-        .execute('sp_ObtenerPacientesPorUsuario');
-
-      const pacientes = result.recordset;
-
-      if (pacientes.length === 0) {
-        logger.info('No se encontraron pacientes para el usuario', {
-          id_usuario: req.params.userId,
-          ip: req.ip,
-        });
-        return res.status(200).json([]);
-      }
-
-      res.status(200).json(pacientes);
-    } catch (err) {
-      logger.error('Error al obtener pacientes por usuario', {
-        id_usuario: req.params.userId,
-        error: err.message,
-        ip: req.ip,
-      });
-
-      const isUserError =
-        err.message.includes('no existe') ||
-        err.message.includes('no asociado');
-
-      res.status(isUserError ? 404 : 500).json({
-        message: err.message || 'Error al obtener pacientes',
-      });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id_usuario: req.params.userId, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
     }
+
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_usuario', sql.UniqueIdentifier, req.params.userId)
+      .execute('sp_ObtenerPacientesPorUsuario');
+
+    if (result.recordset.length === 0) {
+      logger.info('No se encontraron pacientes para el usuario', { id_usuario: req.params.userId, ip: req.ip });
+      return res.status(200).json([]);
+    }
+
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    logger.error('Error al obtener pacientes por usuario', { id_usuario: req.params.userId, error: err.message, ip: req.ip });
+    const error = new Error(err.message || 'Error al obtener pacientes');
+    error.statusCode = err.message.includes('no existe') || err.message.includes('no asociado') ? 404 : (err.statusCode || 500);
+    error.data = err.message ? { message: err.message } : null;
+    next(error);
   }
-);
+});
 
 module.exports = router;
