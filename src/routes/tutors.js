@@ -176,6 +176,79 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *         direccion: "Calle Principal 123, La Romana"
  *         username: "maria.rodriguez"
  *         password: "SecurePass123"
+ *     Niño:
+ *       type: object
+ *       required:
+ *         - nombre_completo
+ *         - identificacion
+ *         - nacionalidad
+ *         - pais_nacimiento
+ *         - fecha_nacimiento
+ *         - genero
+ *       properties:
+ *         id_niño:
+ *           type: string
+ *           format: uuid
+ *           description: Identificador único del niño
+ *         nombre_completo:
+ *           type: string
+ *           description: Nombre completo del niño
+ *         identificacion:
+ *           type: string
+ *           description: Número de identificación del niño
+ *         nacionalidad:
+ *           type: string
+ *           description: Gentilicio del país de nacionalidad
+ *         pais_nacimiento:
+ *           type: string
+ *           description: Nombre del país de nacimiento
+ *         fecha_nacimiento:
+ *           type: string
+ *           format: date
+ *           description: Fecha de nacimiento del niño
+ *         genero:
+ *           type: string
+ *           enum: [M, F, O]
+ *           description: Género del niño (M, F, O)
+ *         direccion_residencia:
+ *           type: string
+ *           description: Dirección de residencia del niño (opcional)
+ *           nullable: true
+ *         latitud:
+ *           type: number
+ *           description: Latitud de la dirección (opcional)
+ *           nullable: true
+ *         longitud:
+ *           type: number
+ *           description: Longitud de la dirección (opcional)
+ *           nullable: true
+ *         id_centro_salud:
+ *           type: string
+ *           format: uuid
+ *           description: ID del centro de salud asociado (opcional)
+ *           nullable: true
+ *         contacto_principal:
+ *           type: string
+ *           description: Contacto principal del niño (opcional)
+ *           nullable: true
+ *         estado:
+ *           type: string
+ *           enum: [Activo, Inactivo]
+ *           description: Estado del niño
+ *       example:
+ *         id_niño: "550e8400-e29b-41d4-a716-446655440000"
+ *         nombre_completo: "Juan Pérez"
+ *         identificacion: "001-9876543-2"
+ *         nacionalidad: "Dominicano"
+ *         pais_nacimiento: "República Dominicana"
+ *         fecha_nacimiento: "2015-06-15"
+ *         genero: "M"
+ *         direccion_residencia: "Calle Secundaria 456, Santo Domingo"
+ *         latitud: 18.486057
+ *         longitud: -69.931212
+ *         id_centro_salud: "123e4567-e89b-12d3-a456-426614174000"
+ *         contacto_principal: "María Rodríguez"
+ *         estado: "Activo"
  */
 
 /**
@@ -493,6 +566,69 @@ router.delete('/:id', validateUUID, async (req, res, next) => {
     logger.error('Error al eliminar tutor', { id: req.params.id, error: err.message, ip: req.ip });
     const error = new Error(err.message || 'Error al eliminar tutor');
     error.statusCode = err.message.includes('vinculado a un niño') ? 400 : (err.statusCode || 500);
+    error.data = err.message ? { message: err.message } : null;
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /api/tutors/{id}/children:
+ *   get:
+ *     summary: Obtener los niños asociados a un tutor
+ *     tags: [Tutors]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID del tutor
+ *     responses:
+ *       200:
+ *         description: Lista de niños obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Niño'
+ *       400:
+ *         description: ID inválido
+ *       404:
+ *         description: Tutor no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get('/:id/children', validateUUID, async (req, res, next) => {
+  try {
+    logger.info('Obteniendo niños por tutor', { id: req.params.id, ip: req.ip });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
+      const error = new Error('Validación fallida');
+      error.statusCode = 400;
+      error.data = errors.array();
+      throw error;
+    }
+
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input('id_tutor', sql.UniqueIdentifier, req.params.id)
+      .execute('sp_ObtenerNiñosPorTutor');
+
+    if (result.recordset.length === 0) {
+      logger.info('No se encontraron niños para el tutor', { id: req.params.id, ip: req.ip });
+      return res.status(200).json([]);
+    }
+
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    logger.error('Error al obtener niños por tutor', { id: req.params.id, error: err.message, ip: req.ip });
+    const error = new Error(err.message || 'Error al obtener niños');
+    error.statusCode = err.message.includes('no existe') ? 404 : (err.statusCode || 500);
     error.data = err.message ? { message: err.message } : null;
     next(error);
   }
