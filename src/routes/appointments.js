@@ -168,7 +168,7 @@ router.get('/:id', validateUUID, async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       logger.warn('Validación fallida', { id: req.params.id, errors: errors.array(), ip: req.ip });
-      const error = new Error('Validación fallida');
+      const error = new Error('Validación fallida0100');
       error.statusCode = 400;
       error.data = errors.array();
       throw error;
