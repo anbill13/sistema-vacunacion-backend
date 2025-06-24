@@ -19,9 +19,9 @@ const logger = winston.createLogger({
 });
 
 const validateHealthStaff = [
-  body('nombre_completo').notEmpty().isString().withMessage('Nombre completo es requerido'),
-  body('identificacion').notEmpty().isString().withMessage('Identificación es requerida'),
-  body('especialidad').notEmpty().isString().withMessage('Especialidad es requerida'),
+  body('nombre').notEmpty().isString().withMessage('Nombre es requerido'),
+  body('cedula').notEmpty().isString().withMessage('Cédula es requerida'),
+  body('especialidad').optional().isString().withMessage('Especialidad debe ser una cadena válida'),
   body('id_centro').isUUID().withMessage('ID de centro inválido'),
   body('telefono').optional().isString().withMessage('Teléfono debe ser una cadena válida'),
   body('email').optional().isEmail().withMessage('Email inválido'),
@@ -228,10 +228,10 @@ router.get('/:id', validateUUID, async (req, res, next) => {
  */
 router.post('/', validateHealthStaff, async (req, res, next) => {
   try {
-    logger.info('Creando personal de salud', { nombre: req.body.nombre_completo, ip: req.ip });
+    logger.info('Creando personal de salud', { nombre: req.body.nombre, ip: req.ip });
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
+      logger.warn('Validación fallida en personal de salud', { errors: errors.array(), body: req.body, ip: req.ip });
       const error = new Error('Validación fallida');
       error.statusCode = 400;
       error.data = errors.array();
@@ -240,13 +240,13 @@ router.post('/', validateHealthStaff, async (req, res, next) => {
     const pool = await poolPromise;
     const result = await pool
       .request()
-      .input('nombre_completo', sql.NVarChar, req.body.nombre_completo)
-      .input('identificacion', sql.NVarChar, req.body.identificacion)
+      .input('nombre', sql.NVarChar, req.body.nombre)
+      .input('cedula', sql.NVarChar, req.body.cedula)
       .input('especialidad', sql.NVarChar, req.body.especialidad)
       .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
       .input('telefono', sql.NVarChar, req.body.telefono)
       .input('email', sql.NVarChar, req.body.email)
-      .query('INSERT INTO Personal_Salud (nombre_completo, identificacion, especialidad, id_centro, telefono, email) OUTPUT INSERTED.id_personal VALUES (@nombre_completo, @identificacion, @especialidad, @id_centro, @telefono, @email)');
+      .query('INSERT INTO Personal_Salud (nombre, cedula, especialidad, id_centro, telefono, email) OUTPUT INSERTED.id_personal VALUES (@nombre, @cedula, @especialidad, @id_centro, @telefono, @email)');
     res.status(201).json({ id_personal: result.recordset[0].id_personal });
   } catch (err) {
     logger.error('Error al crear personal de salud', { error: err.message, ip: req.ip });

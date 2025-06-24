@@ -22,11 +22,11 @@ const validateVaccination = [
   body('id_niño').isUUID().withMessage('ID de niño inválido'),
   body('id_lote').isUUID().withMessage('ID de lote inválido'),
   body('id_personal').isUUID().withMessage('ID de personal inválido'),
-  body('id_centro').optional().isUUID().withMessage('ID de centro inválido'),
+  body('id_centro').optional({ nullable: true }).isUUID().withMessage('ID de centro inválido'),
   body('fecha_vacunacion').isISO8601().withMessage('Fecha de vacunación inválida'),
   body('dosis_aplicada').isInt({ min: 1 }).withMessage('Dosis aplicada debe ser un número positivo'),
-  body('sitio_aplicacion').optional().isString().withMessage('Sitio de aplicación debe ser una cadena válida'),
-  body('observaciones').optional().isString().withMessage('Observaciones debe ser una cadena válida'),
+  body('sitio_aplicacion').optional({ nullable: true }).isString().isLength({ max: 100 }).withMessage('Sitio de aplicación debe ser una cadena válida (máximo 100 caracteres)'),
+  body('observaciones').optional({ nullable: true }).isString().isLength({ max: 500 }).withMessage('Observaciones debe ser una cadena válida (máximo 500 caracteres)'),
 ];
 
 const validateUUID = param('id').isUUID().withMessage('ID inválido');
@@ -324,30 +324,75 @@ router.post('/', validateVaccination, async (req, res, next) => {
     logger.info('Creando historial de vacunación', { id_niño: req.body.id_niño, id_lote: req.body.id_lote, ip: req.ip });
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      logger.warn('Validación fallida', { errors: errors.array(), ip: req.ip });
+      logger.warn('Validación fallida en vacunación', { errors: errors.array(), body: req.body, ip: req.ip });
       const error = new Error('Validación fallida');
       error.statusCode = 400;
       error.data = errors.array();
       throw error;
     }
     const pool = await poolPromise;
+    logger.info('Executing sp_RegistrarVacunacion with parameters', {
+      id_niño: req.body.id_niño,
+      id_lote: req.body.id_lote,
+      id_personal: req.body.id_personal,
+      id_centro: req.body.id_centro,
+      fecha_vacunacion: req.body.fecha_vacunacion,
+      dosis_aplicada: req.body.dosis_aplicada,
+      sitio_aplicacion: req.body.sitio_aplicacion,
+      observaciones: req.body.observaciones,
+      ip: req.ip
+    });
     const result = await pool
       .request()
       .input('id_niño', sql.UniqueIdentifier, req.body.id_niño)
       .input('id_lote', sql.UniqueIdentifier, req.body.id_lote)
       .input('id_personal', sql.UniqueIdentifier, req.body.id_personal)
-      .input('id_centro', sql.UniqueIdentifier, req.body.id_centro)
+      .input('id_centro', sql.UniqueIdentifier, req.body.id_centro || null)
       .input('fecha_vacunacion', sql.DateTime2, req.body.fecha_vacunacion)
       .input('dosis_aplicada', sql.Int, req.body.dosis_aplicada)
-      .input('sitio_aplicacion', sql.NVarChar, req.body.sitio_aplicacion)
-      .input('observaciones', sql.NVarChar, req.body.observaciones)
+      .input('sitio_aplicacion', sql.NVarChar(100), req.body.sitio_aplicacion || null)
+      .input('observaciones', sql.NVarChar(500), req.body.observaciones || null)
       .execute('sp_RegistrarVacunacion');
     res.status(201).json({ id_historial: result.recordset[0].id_historial });
   } catch (err) {
-    logger.error('Error al crear historial de vacunación', { error: err.message, ip: req.ip });
-    const error = new Error('Error al crear historial de vacunación');
-    error.statusCode = err.number === 50001 ? 400 : 500;
-    error.data = err.message;
+    logger.error('Error al crear historial de vacunación', { 
+      error: err.message, 
+      originalError: err.originalError ? err.originalError.message : null,
+      number: err.number,
+      state: err.state,
+      class: err.class,
+      serverName: err.serverName,
+      procName: err.procName,
+      lineNumber: err.lineNumber,
+      ip: req.ip 
+    });
+    
+    let errorMessage = 'Error al crear historial de vacunación';
+    let statusCode = 500;
+    // Note: In production, remove detailed error data from response to avoid exposing sensitive information
+    let errorData = {
+      message: err.message,
+      sqlErrorNumber: err.number,
+      sqlErrorState: err.state,
+      sqlErrorLine: err.lineNumber,
+      sqlErrorProc: err.procName
+    };
+    
+    // Handle specific errors from stored procedure
+    if (err.message && err.message.includes('Lote no disponible o sin stock')) {
+      errorMessage = 'El lote de vacuna no está disponible o no tiene stock suficiente';
+      statusCode = 400;
+    } else if (err.number === 547) { // Foreign key constraint violation
+      errorMessage = 'Error de integridad: verifique que el niño, lote, personal y centro existan';
+      statusCode = 400;
+    } else if (err.number === 50001) { // Custom error from RAISERROR
+      errorMessage = err.message;
+      statusCode = 400;
+    }
+    
+    const error = new Error(errorMessage);
+    error.statusCode = statusCode;
+    error.data = errorData;
     next(error);
   }
 });

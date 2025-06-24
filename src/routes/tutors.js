@@ -2,6 +2,7 @@ const express = require('express');
 const { body, param, validationResult } = require('express-validator');
 const { poolPromise, sql } = require('../config/db');
 const winston = require('winston');
+const bcrypt = require('bcrypt');
 
 const router = express.Router();
 
@@ -43,6 +44,9 @@ const validateTutor = [
   body('telefono').optional().isString().withMessage('Teléfono debe ser una cadena válida'),
   body('email').optional().isEmail().withMessage('Email inválido'),
   body('direccion').optional().isString().withMessage('Dirección debe ser una cadena válida'),
+  body('username').notEmpty().isString().withMessage('Nombre de usuario es requerido'),
+  body('password').notEmpty().isString().withMessage('Contraseña es requerida')
+    .isLength({ min: 8 }).withMessage('La contraseña debe tener al menos 8 caracteres'),
 ];
 
 const validateUUID = param('id').isUUID().withMessage('ID inválido');
@@ -86,19 +90,19 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *           description: Gentilicio del país de nacionalidad
  *         identificacion:
  *           type: string
- *           description: Identificación del tutor (opcional)
+ *           description: Número de identificación del tutor (opcional)
  *           nullable: true
  *         telefono:
  *           type: string
- *           description: Teléfono de contacto (opcional)
+ *           description: Número de teléfono de contacto (opcional)
  *           nullable: true
  *         email:
  *           type: string
- *           description: Email de contacto (opcional)
+ *           description: Correo electrónico de contacto (opcional)
  *           nullable: true
  *         direccion:
  *           type: string
- *           description: Dirección del tutor (opcional)
+ *           description: Dirección física del tutor (opcional)
  *           nullable: true
  *         estado:
  *           type: string
@@ -113,7 +117,7 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *         identificacion: "001-1234567-8"
  *         telefono: "809-555-1234"
  *         email: "maria.rodriguez@example.com"
- *         direccion: "Calle 1, La Romana"
+ *         direccion: "Calle Principal 123, La Romana"
  *         estado: "Activo"
  *     TutorInput:
  *       type: object
@@ -121,40 +125,57 @@ const validateUUID = param('id').isUUID().withMessage('ID inválido');
  *         - nombre
  *         - relacion
  *         - nacionalidad
+ *         - username
+ *         - password
  *       properties:
  *         id_niño:
  *           type: string
  *           format: uuid
+ *           description: Identificador único del niño asociado (opcional)
  *           nullable: true
  *         nombre:
  *           type: string
+ *           description: Nombre completo del tutor
  *         relacion:
  *           type: string
  *           enum: [Madre, Padre, Tutor Legal]
+ *           description: Relación del tutor con el niño
  *         nacionalidad:
  *           type: string
- *           description: Gentilicio del país de nacionalidad
+ *           description: Gentilicio del país de nacionalidad (debe existir en la tabla Paises)
  *         identificacion:
  *           type: string
+ *           description: Número de identificación del tutor (opcional)
  *           nullable: true
  *         telefono:
  *           type: string
+ *           description: Número de teléfono de contacto (opcional)
  *           nullable: true
  *         email:
  *           type: string
+ *           description: Correo electrónico de contacto (opcional)
  *           nullable: true
  *         direccion:
  *           type: string
+ *           description: Dirección física del tutor (opcional)
  *           nullable: true
+ *         username:
+ *           type: string
+ *           description: Nombre de usuario único para el acceso al sistema
+ *         password:
+ *           type: string
+ *           description: Contraseña para el acceso al sistema (mínimo 8 caracteres)
  *       example:
- *         id_niño: null
+ *         id_niño: "550e8400-e29b-41d4-a716-446655440000"
  *         nombre: "María Rodríguez"
  *         relacion: "Madre"
  *         nacionalidad: "Dominicano"
  *         identificacion: "001-1234567-8"
  *         telefono: "809-555-1234"
  *         email: "maria.rodriguez@example.com"
- *         direccion: "Calle 1, La Romana"
+ *         direccion: "Calle Principal 123, La Romana"
+ *         username: "maria.rodriguez"
+ *         password: "SecurePass123"
  */
 
 /**
@@ -251,7 +272,7 @@ router.get('/:id', validateUUID, async (req, res, next) => {
  * @swagger
  * /api/tutors:
  *   post:
- *     summary: Crear un nuevo tutor
+ *     summary: Crear un nuevo tutor y usuario asociado
  *     tags: [Tutors]
  *     requestBody:
  *       required: true
@@ -261,7 +282,7 @@ router.get('/:id', validateUUID, async (req, res, next) => {
  *             $ref: '#/components/schemas/TutorInput'
  *     responses:
  *       201:
- *         description: Tutor creado exitosamente
+ *         description: Tutor y usuario creados exitosamente
  *         content:
  *           application/json:
  *             schema:
@@ -270,6 +291,14 @@ router.get('/:id', validateUUID, async (req, res, next) => {
  *                 id_tutor:
  *                   type: string
  *                   format: uuid
+ *                   description: Identificador único del tutor creado
+ *                 id_usuario:
+ *                   type: string
+ *                   format: uuid
+ *                   description: Identificador único del usuario creado
+ *               example:
+ *                 id_tutor: "123e4567-e89b-12d3-a456-426614174020"
+ *                 id_usuario: "789a1234-b56c-78d9-e012-345678901234"
  *       400:
  *         description: Error en los datos enviados
  *       500:
@@ -277,9 +306,10 @@ router.get('/:id', validateUUID, async (req, res, next) => {
  */
 router.post('/', validateTutor, async (req, res, next) => {
   try {
-    logger.info('Creando tutor', {
+    logger.info('Creando tutor y usuario', {
       id_niño: req.body.id_niño || 'No proporcionado',
       nombre: req.body.nombre,
+      username: req.body.username,
       ip: req.ip
     });
     const errors = validationResult(req);
@@ -290,6 +320,11 @@ router.post('/', validateTutor, async (req, res, next) => {
       error.data = errors.array();
       throw error;
     }
+
+    // Hash the password
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(req.body.password, saltRounds);
+
     const pool = await poolPromise;
     const request = pool.request()
       .input('id_niño', sql.UniqueIdentifier, req.body.id_niño || null)
@@ -300,21 +335,25 @@ router.post('/', validateTutor, async (req, res, next) => {
       .input('telefono', sql.NVarChar, req.body.telefono || null)
       .input('email', sql.NVarChar, req.body.email || null)
       .input('direccion', sql.NVarChar, req.body.direccion || null)
-      .output('id_tutor_output', sql.UniqueIdentifier);
+      .input('username', sql.NVarChar, req.body.username)
+      .input('password_hash', sql.NVarChar, password_hash)
+      .output('id_tutor_output', sql.UniqueIdentifier)
+      .output('id_usuario_output', sql.UniqueIdentifier);
 
     const result = await request.execute('sp_CrearTutor');
     const id_tutor = result.output.id_tutor_output;
+    const id_usuario = result.output.id_usuario_output;
 
-    if (!id_tutor) {
-      logger.warn('No se obtuvo id_tutor del procedimiento almacenado', { ip: req.ip });
-      throw new Error('No se pudo crear el tutor');
+    if (!id_tutor || !id_usuario) {
+      logger.warn('No se obtuvo id_tutor o id_usuario del procedimiento almacenado', { ip: req.ip });
+      throw new Error('No se pudo crear el tutor o el usuario');
     }
 
-    res.status(201).json({ id_tutor });
+    res.status(201).json({ id_tutor, id_usuario });
   } catch (err) {
-    logger.error('Error al crear tutor', { error: err.message, ip: req.ip });
-    const error = new Error(err.message || 'Error al crear tutor');
-    error.statusCode = 400; // Forzamos 400 para errores de validación
+    logger.error('Error al crear tutor y usuario', { error: err.message, ip: req.ip });
+    const error = new Error(err.message || 'Error al crear tutor y usuario');
+    error.statusCode = 400;
     error.data = err.data || { message: err.message };
     next(error);
   }
